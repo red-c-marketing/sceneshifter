@@ -58,8 +58,33 @@ final class ContentScanner {
 	 * @return list<Finding> One finding per distinct URL and location, with a count of repeats.
 	 */
 	public function scan( ScanInput $input ): array {
+		return $this->findingsFrom( $this->chunks( $input ) );
+	}
+
+	/**
+	 * Scans any stored value (a string, or an array or object of them) found
+	 * outside a post: a menu item URL, a widget, an option, a theme setting.
+	 *
+	 * @param string $area  One of the TextChunk::AREA_* constants.
+	 * @param string $label Where the value lives, for the report.
+	 * @return list<Finding>
+	 */
+	public function scanValue( string $area, string $label, mixed $value ): array {
+		$chunks = ( static function () use ( $area, $label, $value ): \Generator {
+			foreach ( self::strings( $value ) as $string ) {
+				yield new TextChunk( $area, $label, $string );
+			}
+		} )();
+		return $this->findingsFrom( $chunks );
+	}
+
+	/**
+	 * @param iterable<TextChunk> $chunks
+	 * @return list<Finding>
+	 */
+	private function findingsFrom( iterable $chunks ): array {
 		$findings = array();
-		foreach ( $this->chunks( $input ) as $chunk ) {
+		foreach ( $chunks as $chunk ) {
 			foreach ( $this->extractor->extract( $chunk->text ) as $url ) {
 				$classification = $this->classifier->classify( $url );
 				if ( null === $classification || ! $classification->isSister() || null === $classification->site ) {

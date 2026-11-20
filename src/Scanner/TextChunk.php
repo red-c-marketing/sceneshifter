@@ -15,6 +15,12 @@ final class TextChunk {
 	public const AREA_EXCERPT = 'excerpt';
 	public const AREA_META    = 'meta';
 
+	// Places outside posts, covered by the site-wide scan only.
+	public const AREA_MENU      = 'menu';
+	public const AREA_WIDGET    = 'widget';
+	public const AREA_OPTION    = 'option';
+	public const AREA_THEME_MOD = 'theme_mod';
+
 	/**
 	 * @param string        $area      One of the AREA_* constants.
 	 * @param string        $label     Human description of the location, e.g. "core/image" or "ACF: Hero link".

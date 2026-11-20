@@ -42,6 +42,13 @@ if ( is_readable( SISTER_SYNC_DIR . 'vendor/autoload.php' ) ) {
 	);
 }
 
+// Action Scheduler runs the background site scan. It must be loaded while
+// plugins load; when several plugins bundle it, the newest copy wins. Without
+// it the scan still runs, but only while the report page is open.
+if ( is_readable( SISTER_SYNC_DIR . 'vendor/woocommerce/action-scheduler/action-scheduler.php' ) ) {
+	require_once SISTER_SYNC_DIR . 'vendor/woocommerce/action-scheduler/action-scheduler.php';
+}
+
 register_activation_hook( __FILE__, array( \RedC\SisterSync\Plugin::class, 'activate' ) );
 
 add_action(

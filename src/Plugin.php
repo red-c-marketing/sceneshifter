@@ -23,6 +23,11 @@ use RedC\SisterSync\Registry\Identity;
 use RedC\SisterSync\Registry\Registry;
 use RedC\SisterSync\Scanner\ContentScanner;
 use RedC\SisterSync\Scanner\PostScanner;
+use RedC\SisterSync\SiteScan\ListColumn;
+use RedC\SisterSync\SiteScan\ReportPage;
+use RedC\SisterSync\SiteScan\ScanController;
+use RedC\SisterSync\SiteScan\Schema;
+use RedC\SisterSync\SiteScan\SiteScanner;
 use RedC\SisterSync\Store\Options;
 use RedC\SisterSync\Url\UrlClassifier;
 
@@ -36,7 +41,9 @@ final class Plugin {
 	private Options $options;
 	private Registry $registry;
 	private Identity $identity;
+	private ?ContentScanner $contentScanner = null;
 	private ?PostScanner $postScanner = null;
+	private ?SiteScanner $siteScanner = null;
 
 	public static function instance(): self {
 		return self::$instance ??= new self();
@@ -52,11 +59,18 @@ final class Plugin {
 			$role->add_cap( self::CAP_TRANSFER );
 			$role->add_cap( self::CAP_VIEW );
 		}
+		Schema::install();
 	}
 
 	public function boot(): void {
+		Schema::maybeInstall();
+
 		$this->registry = $this->options->registry();
 		$this->identity = $this->registry->resolveCurrent( home_url(), self::requestHost() );
+
+		// Registered even when inactive, so a queued batch can record that
+		// the scan stopped instead of failing with no handler.
+		$this->siteScanner()->register();
 
 		if ( is_admin() ) {
 			( new SettingsPage( $this ) )->register();
@@ -69,9 +83,12 @@ final class Plugin {
 		}
 
 		( new RestController( $this ) )->register();
+		( new ScanController( $this->siteScanner() ) )->register();
 		if ( is_admin() ) {
 			( new CheckPage( $this ) )->register();
+			( new ReportPage( $this, $this->siteScanner() ) )->register();
 			( new ListIntegration( $this ) )->register();
+			( new ListColumn( $this ) )->register();
 			( new ClassicMetaBox( $this ) )->register();
 			( new EditorAssets( $this ) )->register();
 		}
@@ -95,15 +112,26 @@ final class Plugin {
 	/**
 	 * Only call when identity()->isActive() is true.
 	 */
-	public function postScanner(): PostScanner {
-		if ( null === $this->postScanner ) {
+	public function contentScanner(): ContentScanner {
+		if ( null === $this->contentScanner ) {
 			$site = $this->identity->site;
 			if ( null === $site || ! $this->identity->isActive() ) {
 				throw new \LogicException( 'Sister Sync is inactive: this site is not identified in the registry.' );
 			}
-			$this->postScanner = new PostScanner( new ContentScanner( new UrlClassifier( $this->registry, $site ) ) );
+			$this->contentScanner = new ContentScanner( new UrlClassifier( $this->registry, $site ) );
 		}
-		return $this->postScanner;
+		return $this->contentScanner;
+	}
+
+	/**
+	 * Only call when identity()->isActive() is true.
+	 */
+	public function postScanner(): PostScanner {
+		return $this->postScanner ??= new PostScanner( $this->contentScanner() );
+	}
+
+	public function siteScanner(): SiteScanner {
+		return $this->siteScanner ??= new SiteScanner( $this );
 	}
 
 	/**
