@@ -1,0 +1,14 @@
+{
+  "name": "sister-sync",
+  "private": true,
+  "description": "Editor assets for the Sister Sync WordPress plugin.",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "build": "wp-scripts build assets/src/editor/index.js --output-path=build",
+    "start": "wp-scripts start assets/src/editor/index.js --output-path=build",
+    "lint:js": "wp-scripts lint-js assets/src"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^37.2.0"
+  }
+}

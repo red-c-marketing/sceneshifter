@@ -1,0 +1,52 @@
+.sister-sync-summary {
+	margin: 8px 0;
+}
+
+.sister-sync-findings {
+	margin: 8px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.sister-sync-finding {
+	margin: 0 0 10px;
+	padding: 6px 8px;
+	border-left: 4px solid #dba617;
+	background: #f6f7f7;
+}
+
+.sister-sync-finding.is-error {
+	border-left-color: #d63638;
+}
+
+.sister-sync-finding button.sister-sync-finding__select {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+}
+
+.sister-sync-badge {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 3px;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.sister-sync-url {
+	display: block;
+	margin: 4px 0;
+	word-break: break-all;
+	font-family: monospace;
+	font-size: 12px;
+}
+
+.sister-sync-location {
+	color: #646970;
+	font-size: 12px;
+}
