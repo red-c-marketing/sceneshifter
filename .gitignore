@@ -5,3 +5,12 @@
 .DS_Store
 .idea/
 *.log
+
+# Yarn (node_modules linker; no zero-installs)
+/.yarn/*
+!/.yarn/patches
+!/.yarn/plugins
+!/.yarn/releases
+!/.yarn/sdks
+!/.yarn/versions
+/.pnp.*
