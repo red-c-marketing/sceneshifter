@@ -48,6 +48,9 @@ final class CheckPage {
 		);
 	}
 
+	/**
+	 * @param list<int> $postIds
+	 */
 	public static function url( array $postIds ): string {
 		return add_query_arg(
 			array(

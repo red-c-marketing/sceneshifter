@@ -133,7 +133,7 @@ final class Command {
 	 */
 	private function saveScan( string $format ): void {
 		$scanner = $this->plugin->siteScanner();
-		$state   = $scanner->start( get_current_user_id() );
+		$state   = $scanner->start( get_current_user_id(), ScanState::TRIGGER_CLI );
 		$bar     = Utils\make_progress_bar( 'Scanning posts', max( 1, $state->total ) );
 
 		$done = 0;
@@ -157,7 +157,7 @@ final class Command {
 				'post_id'  => (int) $row['object_id'],
 				'title'    => (string) $row['object_title'],
 				'severity' => (string) $row['severity'],
-				'sister'   => $this->plugin->registry()->get( (string) $row['sister_id'] )?->label ?? (string) $row['sister_id'],
+				'sister'   => $this->plugin->registry()->get( (string) $row['sister_id'] )->label ?? (string) $row['sister_id'],
 				'url'      => (string) $row['url'],
 				'location' => (string) $row['location'],
 				'count'    => (int) $row['hits'],

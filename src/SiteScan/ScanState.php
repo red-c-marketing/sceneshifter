@@ -21,6 +21,10 @@ final class ScanState {
 	public const PHASE_POSTS  = 'posts';
 	public const PHASE_EXTRAS = 'extras';
 
+	public const TRIGGER_MANUAL    = 'manual';
+	public const TRIGGER_SCHEDULED = 'scheduled';
+	public const TRIGGER_CLI       = 'cli';
+
 	/**
 	 * @param list<string> $postTypes Post types this scan covers.
 	 */
@@ -36,7 +40,9 @@ final class ScanState {
 		public int $startedAt = 0,
 		public int $finishedAt = 0,
 		public int $updatedAt = 0,
-		public string $error = ''
+		public string $error = '',
+		public string $trigger = self::TRIGGER_MANUAL,
+		public int $newFindings = 0
 	) {}
 
 	public static function load(): ?self {
@@ -56,7 +62,9 @@ final class ScanState {
 			(int) ( $data['startedAt'] ?? 0 ),
 			(int) ( $data['finishedAt'] ?? 0 ),
 			(int) ( $data['updatedAt'] ?? 0 ),
-			(string) ( $data['error'] ?? '' )
+			(string) ( $data['error'] ?? '' ),
+			(string) ( $data['trigger'] ?? self::TRIGGER_MANUAL ),
+			(int) ( $data['newFindings'] ?? 0 )
 		);
 	}
 
@@ -74,18 +82,20 @@ final class ScanState {
 	 */
 	public function toArray(): array {
 		return array(
-			'id'         => $this->id,
-			'status'     => $this->status,
-			'phase'      => $this->phase,
-			'postTypes'  => $this->postTypes,
-			'total'      => $this->total,
-			'processed'  => $this->processed,
-			'lastPostId' => $this->lastPostId,
-			'startedBy'  => $this->startedBy,
-			'startedAt'  => $this->startedAt,
-			'finishedAt' => $this->finishedAt,
-			'updatedAt'  => $this->updatedAt,
-			'error'      => $this->error,
+			'id'          => $this->id,
+			'status'      => $this->status,
+			'phase'       => $this->phase,
+			'postTypes'   => $this->postTypes,
+			'total'       => $this->total,
+			'processed'   => $this->processed,
+			'lastPostId'  => $this->lastPostId,
+			'startedBy'   => $this->startedBy,
+			'startedAt'   => $this->startedAt,
+			'finishedAt'  => $this->finishedAt,
+			'updatedAt'   => $this->updatedAt,
+			'error'       => $this->error,
+			'trigger'     => $this->trigger,
+			'newFindings' => $this->newFindings,
 		);
 	}
 }

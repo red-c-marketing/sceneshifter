@@ -91,6 +91,11 @@ final class ContentScanner {
 					continue;
 				}
 
+				$severity = $this->policy->severity( $this->classifier->current(), $classification->site );
+				if ( null === $severity ) {
+					continue;
+				}
+
 				$key = $url . '|' . $chunk->area . '|' . $chunk->label . '|' . implode( '.', $chunk->blockPath ?? array() );
 				if ( isset( $findings[ $key ] ) ) {
 					$findings[ $key ] = $findings[ $key ]->withCount( $findings[ $key ]->count + 1 );
@@ -100,7 +105,7 @@ final class ContentScanner {
 				$findings[ $key ] = new Finding(
 					$classification->site,
 					$url,
-					$this->policy->severity( $this->classifier->current(), $classification->site ),
+					$severity,
 					$chunk->area,
 					$chunk->label,
 					$chunk->blockPath,

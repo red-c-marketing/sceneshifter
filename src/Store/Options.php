@@ -16,6 +16,7 @@ final class Options {
 
 	public const REGISTRY   = 'sister_sync_registry';
 	public const POST_TYPES = 'sister_sync_post_types';
+	public const CHECK      = 'sister_sync_check';
 
 	public const DEFAULT_POST_TYPES = array( 'post', 'page' );
 
@@ -54,6 +55,15 @@ final class Options {
 	 */
 	public function savePostTypes( array $postTypes ): void {
 		update_option( self::POST_TYPES, array_values( array_unique( $postTypes ) ), true );
+	}
+
+	public function checkSettings(): CheckSettings {
+		$data = get_option( self::CHECK, array() );
+		return CheckSettings::fromArray( is_array( $data ) ? $data : array() );
+	}
+
+	public function saveCheckSettings( CheckSettings $settings ): void {
+		update_option( self::CHECK, $settings->toArray(), true );
 	}
 
 	public function isEnabledPostType( string $postType ): bool {

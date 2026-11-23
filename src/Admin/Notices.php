@@ -46,7 +46,7 @@ final class Notices {
 				/* translators: 1: host the request came in on, 2: registry label of the site home_url() points to. */
 				__( 'Sister Sync is inactive: this request came in on %1$s, but the site\'s home URL says it is %2$s. If this database was just copied from another environment, finish the search-replace first.', 'sister-sync' ),
 				$identity->detail,
-				$identity->site?->label ?? ''
+				$identity->site->label ?? ''
 			),
 			default                         => __( 'Sister Sync is inactive.', 'sister-sync' ),
 		};

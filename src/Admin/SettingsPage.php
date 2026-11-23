@@ -24,6 +24,9 @@ final class SettingsPage {
 
 	public function __construct( private readonly Plugin $plugin ) {}
 
+	/**
+	 * @param array<string, string|int> $args Extra query arguments.
+	 */
 	public static function url( array $args = array() ): string {
 		return add_query_arg( array_merge( array( 'page' => self::SLUG ), $args ), admin_url( 'admin.php' ) );
 	}
@@ -33,6 +36,7 @@ final class SettingsPage {
 		add_action( 'admin_menu', array( $this, 'addMenu' ), 20 );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
+		( new CheckSettingsTab( $this->plugin ) )->register();
 	}
 
 	public function addMenu(): void {
@@ -77,6 +81,23 @@ final class SettingsPage {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- choosing a tab only.
+		$tab = 'check' === ( $_GET['tab'] ?? '' ) ? 'check' : 'sites';
+		if ( 'check' === $tab ) {
+			?>
+			<div class="wrap sister-sync-settings">
+				<h1><?php esc_html_e( 'Sister Sync settings', 'sister-sync' ); ?></h1>
+				<?php self::tabs( $tab ); ?>
+				<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- notice after redirect. ?>
+				<?php if ( isset( $_GET['updated'] ) ) : ?>
+					<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'sister-sync' ); ?></p></div>
+				<?php endif; ?>
+				<?php ( new CheckSettingsTab( $this->plugin ) )->render(); ?>
+			</div>
+			<?php
+			return;
+		}
+
 		$registry  = $this->plugin->registry();
 		$identity  = $this->plugin->identity();
 		$draft     = get_transient( self::draftKey() );
@@ -84,8 +105,6 @@ final class SettingsPage {
 		$rows      = $draft['rows'] ?? RegistryForm::rowsFrom( $registry );
 		$rowErrors = $draft['rowErrors'] ?? array();
 		$error     = $draft['error'] ?? null;
-		$enabled   = $this->plugin->options()->postTypes();
-		$postTypes = get_post_types( array( 'show_ui' => true ), 'objects' );
 		delete_transient( self::draftKey() );
 
 		$selfId = $identity->isActive() ? $identity->site?->id : null;
@@ -109,6 +128,7 @@ final class SettingsPage {
 		?>
 		<div class="wrap sister-sync-settings">
 			<h1><?php esc_html_e( 'Sister Sync settings', 'sister-sync' ); ?></h1>
+			<?php self::tabs( $tab ); ?>
 
 			<?php if ( $saved ) : ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'sister-sync' ); ?></p></div>
@@ -205,23 +225,7 @@ final class SettingsPage {
 					</dl>
 				</details>
 
-				<h2><?php esc_html_e( 'Content types', 'sister-sync' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Check (and later Push and Pull) appear on these content types.', 'sister-sync' ); ?></p>
-				<fieldset>
-					<?php foreach ( $postTypes as $type ) : ?>
-						<?php
-						if ( 'attachment' === $type->name || str_starts_with( $type->name, 'wp_' ) || 'acf-field-group' === $type->name || 'acf-field' === $type->name ) {
-							continue;
-						}
-						?>
-						<label class="sister-sync-post-type">
-							<input type="checkbox" name="post_types[]" value="<?php echo esc_attr( $type->name ); ?>" <?php checked( in_array( $type->name, $enabled, true ) ); ?>>
-							<?php echo esc_html( $type->labels->name ); ?> <code><?php echo esc_html( $type->name ); ?></code>
-						</label>
-					<?php endforeach; ?>
-				</fieldset>
-
-				<?php submit_button( __( 'Save settings', 'sister-sync' ) ); ?>
+				<?php submit_button( __( 'Save sites', 'sister-sync' ) ); ?>
 			</form>
 
 			<?php ( new RegistryTransfer( $this->plugin ) )->renderShare(); ?>
@@ -236,10 +240,7 @@ final class SettingsPage {
 		check_admin_referer( self::ACTION );
 
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each field is validated by RegistryForm and Site.
-		$posted    = isset( $_POST['sites'] ) && is_array( $_POST['sites'] ) ? wp_unslash( $_POST['sites'] ) : array();
-		$postTypes = isset( $_POST['post_types'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['post_types'] ) ) : array();
-
-		$this->plugin->options()->savePostTypes( $postTypes );
+		$posted = isset( $_POST['sites'] ) && is_array( $_POST['sites'] ) ? wp_unslash( $_POST['sites'] ) : array();
 
 		$result = RegistryForm::parse( $posted, $this->plugin->registry() );
 		if ( null === $result['registry'] ) {
@@ -260,6 +261,24 @@ final class SettingsPage {
 
 		wp_safe_redirect( self::url( array( 'updated' => 1 ) ) );
 		exit;
+	}
+
+	private static function tabs( string $current ): void {
+		$tabs = array(
+			'sites' => __( 'Sites', 'sister-sync' ),
+			'check' => __( 'Check', 'sister-sync' ),
+		);
+		echo '<nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Settings sections', 'sister-sync' ) . '">';
+		foreach ( $tabs as $tab => $label ) {
+			printf(
+				'<a href="%1$s" class="nav-tab%2$s"%3$s>%4$s</a>',
+				esc_url( self::url( 'sites' === $tab ? array() : array( 'tab' => $tab ) ) ),
+				$tab === $current ? ' nav-tab-active' : '',
+				$tab === $current ? ' aria-current="page"' : '',
+				esc_html( $label )
+			);
+		}
+		echo '</nav>';
 	}
 
 	/**
@@ -346,7 +365,7 @@ final class SettingsPage {
 				/* translators: 1: site name, 2: role. */
 				__( 'This is %1$s (%2$s). Sister Sync is active.', 'sister-sync' ),
 				$identity->site?->label,
-				self::roleLabels()[ $identity->site?->role ?? 'other' ] ?? ''
+				self::roleLabels()[ $identity->site->role ?? 'other' ] ?? ''
 			),
 			Identity::UNCONFIGURED          => __( 'No sites set up yet. List every environment below, including this one, and save. If another environment is already set up, open its Sister Sync settings and send the list here instead.', 'sister-sync' ),
 			Identity::HOME_NOT_IN_REGISTRY  => sprintf(

@@ -93,8 +93,9 @@ final class RegistryTransfer {
 
 				<?php if ( $identity->isActive() && null !== $identity->site ) : ?>
 					<?php
-					$bundle = new RegistryBundle( $registry, $identity->site->id );
-					$others = array_filter( $registry->sites(), static fn( Site $s ): bool => $s->id !== $identity->site?->id );
+					$selfId = $identity->site->id;
+					$bundle = new RegistryBundle( $registry, $selfId );
+					$others = array_filter( $registry->sites(), static fn( Site $s ): bool => $s->id !== $selfId );
 					?>
 					<?php if ( array() === $others ) : ?>
 						<p><?php esc_html_e( 'Add your other sites above to send the list to them.', 'sister-sync' ); ?></p>

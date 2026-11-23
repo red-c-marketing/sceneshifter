@@ -47,6 +47,9 @@ final class ReportPage {
 		);
 	}
 
+	/**
+	 * @param array<string, string|int> $args Extra query arguments.
+	 */
 	public static function url( array $args = array() ): string {
 		return add_query_arg( array_merge( array( 'page' => self::SLUG ), $args ), admin_url( 'admin.php' ) );
 	}
@@ -248,7 +251,7 @@ final class ReportPage {
 							(string) $row['object_title'],
 							$table->typeLabel( $row ),
 							(string) $row['severity'],
-							$this->plugin->registry()->get( (string) $row['sister_id'] )?->label ?? (string) $row['sister_id'],
+							$this->plugin->registry()->get( (string) $row['sister_id'] )->label ?? (string) $row['sister_id'],
 							(string) $row['url'],
 							(string) $row['location'],
 							(string) $row['hits'],

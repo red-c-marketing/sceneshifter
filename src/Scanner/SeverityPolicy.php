@@ -1,9 +1,8 @@
 <?php
 /**
- * Decides how serious a sister reference is.
- *
- * Default: on live, a link to any non-live sister is an error. Every other
- * cross-sister link is a warning. Per-role configuration comes later.
+ * Decides how serious a sister reference is, from this site's Check
+ * settings. By default, on live a link to any other environment is an
+ * error, and everywhere else it is a warning.
  *
  * @package RedC\SisterSync
  */
@@ -13,13 +12,17 @@ declare(strict_types=1);
 namespace RedC\SisterSync\Scanner;
 
 use RedC\SisterSync\Registry\Site;
+use RedC\SisterSync\Store\CheckSettings;
 
 final class SeverityPolicy {
 
-	public function severity( Site $current, Site $sister ): string {
-		if ( 'live' === $current->role && 'live' !== $sister->role ) {
-			return Finding::ERROR;
-		}
-		return Finding::WARNING;
+	public function __construct( private readonly CheckSettings $settings = new CheckSettings() ) {}
+
+	/**
+	 * Finding::ERROR, Finding::WARNING, or null when links to that sister
+	 * aren't reported.
+	 */
+	public function severity( Site $current, Site $sister ): ?string {
+		return $this->settings->severityFor( $current->role, $sister->role );
 	}
 }

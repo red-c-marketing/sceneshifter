@@ -63,5 +63,10 @@ final class ClassicMetaBox {
 			true
 		);
 		wp_set_script_translations( 'sister-sync-classic', 'sister-sync' );
+		wp_add_inline_script(
+			'sister-sync-classic',
+			'window.sisterSyncClassic = ' . wp_json_encode( array( 'blockPublish' => $this->plugin->options()->checkSettings()->blockPublish ) ) . ';',
+			'before'
+		);
 	}
 }

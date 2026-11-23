@@ -18,15 +18,18 @@ use RedC\SisterSync\Check\CheckPage;
 use RedC\SisterSync\Check\ClassicMetaBox;
 use RedC\SisterSync\Check\EditorAssets;
 use RedC\SisterSync\Check\ListIntegration;
+use RedC\SisterSync\Check\PublishGuard;
 use RedC\SisterSync\Check\RestController;
 use RedC\SisterSync\Cli\Command;
 use RedC\SisterSync\Registry\Identity;
 use RedC\SisterSync\Registry\Registry;
 use RedC\SisterSync\Scanner\ContentScanner;
 use RedC\SisterSync\Scanner\PostScanner;
+use RedC\SisterSync\Scanner\SeverityPolicy;
 use RedC\SisterSync\SiteScan\ListColumn;
 use RedC\SisterSync\SiteScan\ReportPage;
 use RedC\SisterSync\SiteScan\ScanController;
+use RedC\SisterSync\SiteScan\ScheduledScan;
 use RedC\SisterSync\SiteScan\Schema;
 use RedC\SisterSync\SiteScan\SiteScanner;
 use RedC\SisterSync\Store\Options;
@@ -92,6 +95,7 @@ final class Plugin {
 
 		// Always on, so a site with no list yet can receive one.
 		( new RegistryTransfer( $this ) )->register();
+		( new ScheduledScan( $this, $this->siteScanner() ) )->register();
 
 		if ( is_admin() ) {
 			( new SettingsPage( $this ) )->register();
@@ -105,6 +109,7 @@ final class Plugin {
 
 		( new RestController( $this ) )->register();
 		( new ScanController( $this->siteScanner() ) )->register();
+		( new PublishGuard( $this ) )->register();
 		if ( is_admin() ) {
 			( new CheckPage( $this ) )->register();
 			( new ReportPage( $this, $this->siteScanner() ) )->register();
@@ -139,7 +144,10 @@ final class Plugin {
 			if ( null === $site || ! $this->identity->isActive() ) {
 				throw new \LogicException( 'Sister Sync is inactive: this site is not identified in the registry.' );
 			}
-			$this->contentScanner = new ContentScanner( new UrlClassifier( $this->registry, $site ) );
+			$this->contentScanner = new ContentScanner(
+				new UrlClassifier( $this->registry, $site ),
+				new SeverityPolicy( $this->options->checkSettings() )
+			);
 		}
 		return $this->contentScanner;
 	}

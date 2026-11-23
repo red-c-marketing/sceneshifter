@@ -97,7 +97,7 @@ final class ReportTable extends \WP_List_Table {
 			<select name="sister" id="sister-sync-filter-sister">
 				<option value=""><?php esc_html_e( 'All sister sites', 'sister-sync' ); ?></option>
 				<?php foreach ( $this->store->distinctSisters( $this->scanId ) as $id ) : ?>
-					<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $this->filters->sister, $id ); ?>><?php echo esc_html( $this->registry->get( $id )?->label ?? $id ); ?></option>
+					<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $this->filters->sister, $id ); ?>><?php echo esc_html( $this->registry->get( $id )->label ?? $id ); ?></option>
 				<?php endforeach; ?>
 			</select>
 
@@ -156,7 +156,7 @@ final class ReportTable extends \WP_List_Table {
 		return sprintf(
 			'<span style="background:%1$s;color:#fff;padding:1px 6px;border-radius:3px;white-space:nowrap;">%2$s</span>',
 			esc_attr( $site?->colour() ?? '#787c82' ),
-			esc_html( $site?->label ?? (string) $item['sister_id'] )
+			esc_html( $site->label ?? (string) $item['sister_id'] )
 		);
 	}
 
@@ -202,7 +202,7 @@ final class ReportTable extends \WP_List_Table {
 			ScannedObject::MENU_ITEM => sprintf( __( 'Menu item in "%s"', 'sister-sync' ), $this->menuName( $subtype ) ),
 			/* translators: %s: widget type. */
 			ScannedObject::WIDGET    => sprintf( __( 'Widget (%s)', 'sister-sync' ), $subtype ),
-			ScannedObject::OPTION    => __( 'ACF options page', 'sister-sync' ),
+			ScannedObject::OPTION    => 'acf' === $subtype ? __( 'ACF options page', 'sister-sync' ) : __( 'Site option', 'sister-sync' ),
 			ScannedObject::THEME_MOD => __( 'Theme setting', 'sister-sync' ),
 			default                  => (string) $item['object_type'],
 		};

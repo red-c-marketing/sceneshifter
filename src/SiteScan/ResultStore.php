@@ -60,6 +60,36 @@ final class ResultStore {
 	}
 
 	/**
+	 * Findings in one scan that weren't in another: the same item with the
+	 * same URL counts as already known, wherever in the item it is.
+	 *
+	 * @param string $scanId     The new scan.
+	 * @param string $previousId The scan to compare with, or '' for none (everything is new).
+	 * @param int    $limit      How many rows to return; errors first.
+	 * @return array{count: int, rows: list<array<string, mixed>>}
+	 */
+	public function newFindings( string $scanId, string $previousId, int $limit ): array {
+		global $wpdb;
+		$table = Schema::resultsTable();
+		$where = $wpdb->prepare(
+			"n.scan_id = %s AND NOT EXISTS (SELECT 1 FROM {$table} p WHERE p.scan_id = %s AND p.object_type = n.object_type AND p.object_id = n.object_id AND p.object_key = n.object_key AND p.url = n.url)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$scanId,
+			$previousId
+		);
+
+		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} n WHERE {$where}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery
+		$rows  = 0 === $count ? array() : (array) $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare( "SELECT n.* FROM {$table} n WHERE {$where} ORDER BY CASE WHEN n.severity = 'error' THEN 0 ELSE 1 END, n.object_title, n.id LIMIT %d", $limit ), // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			ARRAY_A
+		);
+
+		return array(
+			'count' => $count,
+			'rows'  => array_values( $rows ),
+		);
+	}
+
+	/**
 	 * Deletes one scan's rows (a cancelled or failed scan).
 	 */
 	public function discard( string $scanId ): void {

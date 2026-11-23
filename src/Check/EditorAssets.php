@@ -28,7 +28,7 @@ final class EditorAssets {
 
 		$assetFile = SISTER_SYNC_DIR . 'build/index.asset.php';
 		if ( ! is_readable( $assetFile ) ) {
-			return; // Not built yet: run `npm run build`.
+			return; // Not built yet: run `yarn build`.
 		}
 		$asset = require $assetFile;
 
@@ -40,6 +40,11 @@ final class EditorAssets {
 			true
 		);
 		wp_set_script_translations( 'sister-sync-editor', 'sister-sync' );
+		wp_add_inline_script(
+			'sister-sync-editor',
+			'window.sisterSyncEditor = ' . wp_json_encode( array( 'blockPublish' => $this->plugin->options()->checkSettings()->blockPublish ) ) . ';',
+			'before'
+		);
 
 		wp_enqueue_style(
 			'sister-sync-editor',

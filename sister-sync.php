@@ -46,7 +46,7 @@ if ( is_readable( SISTER_SYNC_DIR . 'vendor/autoload.php' ) ) {
 if ( ! defined( 'SISTER_SYNC_URL' ) ) {
 	define(
 		'SISTER_SYNC_URL',
-		\RedC\SisterSync\PluginUrl::forMustUseSymlink( __DIR__, WP_PLUGIN_DIR, WPMU_PLUGIN_DIR, WPMU_PLUGIN_URL )
+		\RedC\SisterSync\PluginUrl::forMustUseSymlink( __DIR__, WP_PLUGIN_DIR, WPMU_PLUGIN_DIR, plugins_url( '', WPMU_PLUGIN_DIR . '/index.php' ) )
 			?? plugin_dir_url( __FILE__ )
 	);
 }

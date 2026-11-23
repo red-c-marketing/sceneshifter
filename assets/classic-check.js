@@ -88,6 +88,91 @@
 		results.appendChild( list );
 	}
 
+	function check( root ) {
+		return wp.apiFetch( {
+			path: '/sister-sync/v1/check',
+			method: 'POST',
+			data: {
+				post_id: parseInt( root.dataset.postId, 10 ),
+				content: currentContent(),
+				excerpt: currentExcerpt(),
+			},
+		} );
+	}
+
+	/**
+	 * Checks before Publish, Schedule or Update. With findings, asks for
+	 * confirmation; with errors on a site that blocks them, stops.
+	 *
+	 * @param {HTMLElement} root    Meta box element.
+	 * @param {HTMLElement} results Results container.
+	 */
+	function guardPublish( root, results ) {
+		const publish = document.getElementById( 'publish' );
+		if ( ! publish ) {
+			return;
+		}
+		const blockPublish = Boolean(
+			window.sisterSyncClassic && window.sisterSyncClassic.blockPublish
+		);
+		let confirmed = false;
+
+		publish.addEventListener( 'click', ( event ) => {
+			if ( confirmed ) {
+				confirmed = false;
+				return;
+			}
+			event.preventDefault();
+			publish.disabled = true;
+			results.textContent = __( 'Checking…', 'sister-sync' );
+
+			check( root )
+				.then( ( data ) => {
+					render( results, data );
+					publish.disabled = false;
+					if ( ! data.findings.length ) {
+						confirmed = true;
+						publish.click();
+						return;
+					}
+					if ( blockPublish && data.counts.error > 0 ) {
+						root.scrollIntoView( { behavior: 'smooth' } );
+						window.alert(
+							__(
+								'This content links to another environment, and publishing is blocked on this site until it is fixed. The links are listed in the Sister Sync box.',
+								'sister-sync'
+							)
+						);
+						return;
+					}
+					const message = sprintf(
+						/* translators: 1: number of errors, 2: number of warnings. */
+						__(
+							'Sister Sync found links to other environments (%1$d errors, %2$d warnings). They are listed in the Sister Sync box. Publish anyway?',
+							'sister-sync'
+						),
+						data.counts.error,
+						data.counts.warning
+					);
+					if ( window.confirm( message ) ) {
+						confirmed = true;
+						publish.click();
+					}
+				} )
+				.catch( () => {
+					// Don't stand in the way if the check itself fails; the
+					// server still enforces blocking.
+					publish.disabled = false;
+					results.textContent = __(
+						'The check failed, so it was skipped.',
+						'sister-sync'
+					);
+					confirmed = true;
+					publish.click();
+				} );
+		} );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', () => {
 		const root = document.getElementById( 'sister-sync-classic' );
 		const button = document.getElementById( 'sister-sync-classic-check' );
@@ -100,15 +185,7 @@
 			button.disabled = true;
 			results.textContent = __( 'Checking…', 'sister-sync' );
 
-			wp.apiFetch( {
-				path: '/sister-sync/v1/check',
-				method: 'POST',
-				data: {
-					post_id: parseInt( root.dataset.postId, 10 ),
-					content: currentContent(),
-					excerpt: currentExcerpt(),
-				},
-			} )
+			check( root )
 				.then( ( data ) => render( results, data ) )
 				.catch( ( error ) => {
 					results.textContent =
@@ -119,5 +196,7 @@
 					button.disabled = false;
 				} );
 		} );
+
+		guardPublish( root, results );
 	} );
 } )();

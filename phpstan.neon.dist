@@ -1,0 +1,14 @@
+parameters:
+    level: 6
+    paths:
+        - sister-sync.php
+        - uninstall.php
+        - src
+    bootstrapFiles:
+        - tests/phpstan-bootstrap.php
+    scanFiles:
+        - tests/stubs/php-cli-tools.php
+        - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
+        - vendor/woocommerce/action-scheduler/functions.php
+    scanDirectories:
+        - vendor/woocommerce/action-scheduler/classes

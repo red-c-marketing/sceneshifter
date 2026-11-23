@@ -230,9 +230,14 @@ function SidebarPanel() {
 	);
 }
 
+const blockPublish = Boolean( window.sisterSyncEditor?.blockPublish );
+
 function PrePublishPanel() {
 	const check = useSisterCheck();
 	const { run } = check;
+	const { lockPostSaving, unlockPostSaving } = useDispatch( 'core/editor' );
+	const blocked =
+		blockPublish && check.status === 'done' && check.data?.counts.error > 0;
 
 	// Check once when the pre-publish panel opens.
 	useEffect( () => {
@@ -240,12 +245,35 @@ function PrePublishPanel() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
+	// Hold the Publish button while there are errors and this site blocks
+	// them. The server refuses the save anyway; this explains why first.
+	useEffect( () => {
+		if ( ! blocked ) {
+			return undefined;
+		}
+		lockPostSaving( 'sister-sync' );
+		return () => unlockPostSaving( 'sister-sync' );
+	}, [ blocked, lockPostSaving, unlockPostSaving ] );
+
 	return (
 		<PluginPrePublishPanel
 			title={ __( 'Sister Sync', 'sister-sync' ) }
 			initialOpen={ true }
 		>
+			{ blocked && (
+				<Notice status="error" isDismissible={ false }>
+					{ __(
+						'Publishing is blocked on this site until the errors below are fixed.',
+						'sister-sync'
+					) }
+				</Notice>
+			) }
 			<Results { ...check } />
+			{ check.status === 'done' && (
+				<Button variant="link" onClick={ run }>
+					{ __( 'Check again', 'sister-sync' ) }
+				</Button>
+			) }
 		</PluginPrePublishPanel>
 	);
 }

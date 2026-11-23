@@ -31,9 +31,16 @@ final class SiteScanner {
 	 */
 	public const EXTRA_POST_TYPES = array( 'wp_block', 'wp_navigation', 'wp_template', 'wp_template_part' );
 
-	private const BATCH_SIZE  = 50;
-	private const LOCK_OPTION = 'sister_sync_scan_lock';
-	private const LOCK_TTL    = 120;
+	private const BATCH_SIZE          = 50;
+	private const NEW_FINDINGS_LISTED = 20;
+	private const LOCK_OPTION         = 'sister_sync_scan_lock';
+	private const LOCK_TTL            = 120;
+
+	/**
+	 * Options never scanned by the extra-options setting: WordPress
+	 * internals, caches, and options other parts of the scan already cover.
+	 */
+	private const SKIPPED_OPTION_PREFIXES = array( '_transient_', '_site_transient_', 'sister_sync_', 'widget_', 'options_', '_options_', 'theme_mods_', 'cron', 'rewrite_rules', 'active_plugins', 'auth_', 'secure_auth_', 'logged_in_', 'nonce_' );
 
 	private const SKIPPED_STATUSES = array( 'trash', 'auto-draft', 'inherit' );
 
@@ -55,7 +62,7 @@ final class SiteScanner {
 	/**
 	 * Starts a new scan, replacing any scan already running.
 	 */
-	public function start( int $userId ): ScanState {
+	public function start( int $userId, string $trigger = ScanState::TRIGGER_MANUAL ): ScanState {
 		$previous = ScanState::load();
 		if ( null !== $previous && $previous->isRunning() ) {
 			$this->store->discard( $previous->id );
@@ -72,7 +79,11 @@ final class SiteScanner {
 			0,
 			0,
 			$userId,
-			time()
+			time(),
+			0,
+			0,
+			'',
+			$trigger
 		);
 		$state->save();
 		$this->queueNext( $state );
@@ -137,11 +148,15 @@ final class SiteScanner {
 				$this->scanWidgets( $state->id );
 				$this->scanAcfOptions( $state->id );
 				$this->scanThemeMods( $state->id );
+				$this->scanExtraOptions( $state->id );
 
-				$state->status     = ScanState::COMPLETE;
-				$state->finishedAt = time();
+				$new                = $this->store->newFindings( $state->id, $this->store->reportScanId(), self::NEW_FINDINGS_LISTED );
+				$state->newFindings = $new['count'];
+				$state->status      = ScanState::COMPLETE;
+				$state->finishedAt  = time();
 				$state->save();
 				$this->store->publish( $state->id );
+				$completed = $new['rows'];
 			}
 		} catch ( Throwable $e ) {
 			$state->status     = ScanState::FAILED;
@@ -151,6 +166,21 @@ final class SiteScanner {
 			$this->store->discard( $state->id );
 		} finally {
 			$this->releaseLock();
+		}
+
+		if ( isset( $completed ) ) {
+			try {
+				/**
+				 * Fires when a site scan finishes and becomes the report.
+				 *
+				 * @param ScanState                  $state       The finished scan.
+				 * @param list<array<string, mixed>> $newFindings Up to 20 findings that weren't in the previous report.
+				 */
+				do_action( 'sister_sync_scan_complete', $state, $completed );
+			} catch ( Throwable $e ) {
+				// The scan itself succeeded; a failing listener mustn't change that.
+				error_log( 'Sister Sync: scan complete listener failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			}
 		}
 
 		return $state;
@@ -275,8 +305,7 @@ final class SiteScanner {
 
 	private function scanThemeMods( string $scanId ): void {
 		$scanner = $this->plugin->contentScanner();
-		$mods    = get_theme_mods();
-		foreach ( is_array( $mods ) ? $mods : array() as $key => $value ) {
+		foreach ( get_theme_mods() as $key => $value ) {
 			$key = (string) $key;
 			if ( in_array( $key, self::SKIPPED_THEME_MODS, true ) ) {
 				continue;
@@ -286,6 +315,46 @@ final class SiteScanner {
 			$findings = $scanner->scanValue( TextChunk::AREA_THEME_MOD, $label, $value );
 			if ( array() !== $findings ) {
 				$this->store->insert( $scanId, new ScannedObject( ScannedObject::THEME_MOD, $key, 0, $key, get_stylesheet() ), $findings );
+			}
+		}
+	}
+
+	/**
+	 * Options named in Check settings (for example a theme's own options
+	 * panel), plus any added through the sister_sync_scan_option_patterns
+	 * filter.
+	 */
+	private function scanExtraOptions( string $scanId ): void {
+		/**
+		 * SQL LIKE patterns of option names to scan, in addition to ACF
+		 * options pages, widgets and theme settings.
+		 *
+		 * @param list<string> $patterns From Check settings, with * turned into %.
+		 */
+		$patterns = (array) apply_filters( 'sister_sync_scan_option_patterns', $this->plugin->options()->checkSettings()->extraOptionLikePatterns() );
+		if ( array() === $patterns ) {
+			return;
+		}
+
+		$scanner = $this->plugin->contentScanner();
+		$names   = array();
+		foreach ( $patterns as $pattern ) {
+			foreach ( $this->optionNames( (string) $pattern ) as $name ) {
+				$names[ $name ] = true;
+			}
+		}
+		foreach ( array_keys( $names ) as $name ) {
+			$name = (string) $name;
+			foreach ( self::SKIPPED_OPTION_PREFIXES as $prefix ) {
+				if ( str_starts_with( $name, $prefix ) ) {
+					continue 2;
+				}
+			}
+			/* translators: %s: option name. */
+			$label    = sprintf( __( 'Option: %s', 'sister-sync' ), $name );
+			$findings = $scanner->scanValue( TextChunk::AREA_OPTION, $label, get_option( $name ) );
+			if ( array() !== $findings ) {
+				$this->store->insert( $scanId, new ScannedObject( ScannedObject::OPTION, $name, 0, $name, 'option' ), $findings );
 			}
 		}
 	}
@@ -365,6 +434,11 @@ final class SiteScanner {
 	 */
 	private function queueNext( ScanState $state ): void {
 		if ( ! self::queueAvailable() ) {
+			// Without Action Scheduler, fall back to WP-Cron so scheduled
+			// scans still finish when nobody has the report page open.
+			if ( false === wp_next_scheduled( self::HOOK, array( $state->id ) ) ) {
+				wp_schedule_single_event( time(), self::HOOK, array( $state->id ) );
+			}
 			return;
 		}
 		$pending = as_get_scheduled_actions(
@@ -383,8 +457,9 @@ final class SiteScanner {
 
 	private function unschedule(): void {
 		if ( function_exists( 'as_unschedule_all_actions' ) ) {
-			as_unschedule_all_actions( '', array(), self::GROUP );
+			as_unschedule_all_actions( self::HOOK, array(), self::GROUP );
 		}
+		wp_unschedule_hook( self::HOOK );
 	}
 
 	/**
