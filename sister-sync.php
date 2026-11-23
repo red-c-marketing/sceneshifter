@@ -20,7 +20,6 @@ defined( 'ABSPATH' ) || exit;
 define( 'SISTER_SYNC_VERSION', '0.1.0' );
 define( 'SISTER_SYNC_FILE', __FILE__ );
 define( 'SISTER_SYNC_DIR', plugin_dir_path( __FILE__ ) );
-define( 'SISTER_SYNC_URL', plugin_dir_url( __FILE__ ) );
 
 // Composer autoloader when present (development). Phase 0 has no runtime
 // dependencies, so a plain PSR-4 fallback keeps production installs working
@@ -39,6 +38,16 @@ if ( is_readable( SISTER_SYNC_DIR . 'vendor/autoload.php' ) ) {
 				require_once $file;
 			}
 		}
+	);
+}
+
+// A must-use loader can set SISTER_SYNC_URL itself. Otherwise a symlinked
+// must-use copy is mapped back to its link, which plugin_dir_url() can't do.
+if ( ! defined( 'SISTER_SYNC_URL' ) ) {
+	define(
+		'SISTER_SYNC_URL',
+		\RedC\SisterSync\PluginUrl::forMustUseSymlink( __DIR__, WP_PLUGIN_DIR, WPMU_PLUGIN_DIR, WPMU_PLUGIN_URL )
+			?? plugin_dir_url( __FILE__ )
 	);
 }
 

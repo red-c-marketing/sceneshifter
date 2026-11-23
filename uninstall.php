@@ -15,6 +15,7 @@ delete_option( 'sister_sync_scan_state' );
 delete_option( 'sister_sync_report_scan' );
 delete_option( 'sister_sync_scan_lock' );
 delete_option( 'sister_sync_db_version' );
+delete_option( 'sister_sync_caps_version' );
 
 global $wpdb;
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sistersync_scan_results" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared

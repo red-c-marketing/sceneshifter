@@ -17,7 +17,7 @@ final class Site {
 
 	public const ROLES = array( 'dev', 'staging', 'uat', 'live', 'other' );
 
-	private const DEFAULT_COLOURS = array(
+	public const DEFAULT_COLOURS = array(
 		'live'    => '#d63638',
 		'staging' => '#dba617',
 		'uat'     => '#2271b1',

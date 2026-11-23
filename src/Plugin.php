@@ -12,6 +12,7 @@ namespace RedC\SisterSync;
 
 use RedC\SisterSync\Admin\AdminBar;
 use RedC\SisterSync\Admin\Notices;
+use RedC\SisterSync\Admin\RegistryTransfer;
 use RedC\SisterSync\Admin\SettingsPage;
 use RedC\SisterSync\Check\CheckPage;
 use RedC\SisterSync\Check\ClassicMetaBox;
@@ -36,6 +37,9 @@ final class Plugin {
 	public const CAP_TRANSFER = 'sistersync_transfer';
 	public const CAP_VIEW     = 'sistersync_view';
 
+	public const CAPS_VERSION        = '1';
+	public const CAPS_VERSION_OPTION = 'sister_sync_caps_version';
+
 	private static ?self $instance = null;
 
 	private Options $options;
@@ -54,16 +58,30 @@ final class Plugin {
 	}
 
 	public static function activate(): void {
+		self::grantCapabilities();
+		Schema::install();
+	}
+
+	/**
+	 * Gives administrators the plugin's capabilities. Runs on activation, and
+	 * once on load for installs that never activate, such as must-use
+	 * plugins. The version option stops it re-adding a capability that
+	 * someone later removed on purpose.
+	 */
+	public static function grantCapabilities(): void {
 		$role = get_role( 'administrator' );
 		if ( $role ) {
 			$role->add_cap( self::CAP_TRANSFER );
 			$role->add_cap( self::CAP_VIEW );
 		}
-		Schema::install();
+		update_option( self::CAPS_VERSION_OPTION, self::CAPS_VERSION, true );
 	}
 
 	public function boot(): void {
 		Schema::maybeInstall();
+		if ( get_option( self::CAPS_VERSION_OPTION ) !== self::CAPS_VERSION ) {
+			self::grantCapabilities();
+		}
 
 		$this->registry = $this->options->registry();
 		$this->identity = $this->registry->resolveCurrent( home_url(), self::requestHost() );
@@ -71,6 +89,9 @@ final class Plugin {
 		// Registered even when inactive, so a queued batch can record that
 		// the scan stopped instead of failing with no handler.
 		$this->siteScanner()->register();
+
+		// Always on, so a site with no list yet can receive one.
+		( new RegistryTransfer( $this ) )->register();
 
 		if ( is_admin() ) {
 			( new SettingsPage( $this ) )->register();
