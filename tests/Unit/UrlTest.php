@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Url\Classification;
-use RedC\SisterSync\Url\UrlClassifier;
-use RedC\SisterSync\Url\UrlNormaliser;
+use RedC\Sceneshifter\Url\Classification;
+use RedC\Sceneshifter\Url\UrlClassifier;
+use RedC\Sceneshifter\Url\UrlNormaliser;
 
 final class UrlTest extends TestCase {
 

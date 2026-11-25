@@ -1,19 +1,19 @@
 <?php
 /**
- * POST /wp-json/sister-sync/v1/check
+ * POST /wp-json/sceneshifter/v1/check
  *
  * Scans a post for sister references. Accepts unsaved content and excerpt so
  * the editor can check before saving. Uses normal logged-in REST auth.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Check;
+namespace RedC\Sceneshifter\Check;
 
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -21,7 +21,7 @@ use WP_REST_Server;
 
 final class RestController {
 
-	public const NAMESPACE = 'sister-sync/v1';
+	public const NAMESPACE = 'sceneshifter/v1';
 
 	public function __construct( private readonly Plugin $plugin ) {}
 
@@ -57,7 +57,7 @@ final class RestController {
 	public function check( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$post = get_post( (int) $request->get_param( 'post_id' ) );
 		if ( ! $post ) {
-			return new WP_Error( 'sister_sync_no_post', __( 'Post not found.', 'sister-sync' ), array( 'status' => 404 ) );
+			return new WP_Error( 'sceneshifter_no_post', __( 'Post not found.', 'sceneshifter' ), array( 'status' => 404 ) );
 		}
 
 		$content = $request->get_param( 'content' );

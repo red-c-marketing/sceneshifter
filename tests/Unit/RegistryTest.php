@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Registry\Identity;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Registry\Site;
+use RedC\Sceneshifter\Registry\Identity;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Registry\Site;
 
 final class RegistryTest extends TestCase {
 

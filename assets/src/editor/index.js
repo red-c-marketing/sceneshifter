@@ -1,5 +1,5 @@
 /**
- * Sister Sync panel for the block editor: a Check button in the document
+ * Sceneshifter panel for the block editor: a Check button in the document
  * sidebar and an automatic check in the pre-publish panel.
  *
  * Both check the content as it is in the editor, including unsaved edits.
@@ -44,7 +44,7 @@ function useSisterCheck() {
 	const run = useCallback( () => {
 		setState( { status: 'loading', data: null, error: null } );
 		apiFetch( {
-			path: '/sister-sync/v1/check',
+			path: '/sceneshifter/v1/check',
 			method: 'POST',
 			data: { post_id: postId, content, excerpt },
 		} )
@@ -57,7 +57,7 @@ function useSisterCheck() {
 					data: null,
 					error:
 						error?.message ||
-						__( 'The check failed.', 'sister-sync' ),
+						__( 'The check failed.', 'sceneshifter' ),
 				} )
 			);
 	}, [ postId, content, excerpt ] );
@@ -90,7 +90,7 @@ function Summary( { counts } ) {
 	if ( total === 0 ) {
 		return (
 			<Notice status="success" isDismissible={ false }>
-				{ __( 'No sister links found.', 'sister-sync' ) }
+				{ __( 'No sister links found.', 'sceneshifter' ) }
 			</Notice>
 		);
 	}
@@ -101,10 +101,10 @@ function Summary( { counts } ) {
 		>
 			{ sprintf(
 				/* translators: 1: number of errors, 2: number of warnings. */
-				__( '%1$s, %2$s', 'sister-sync' ),
+				__( '%1$s, %2$s', 'sceneshifter' ),
 				sprintf(
 					/* translators: %d: number of errors. */
-					_n( '%d error', '%d errors', counts.error, 'sister-sync' ),
+					_n( '%d error', '%d errors', counts.error, 'sceneshifter' ),
 					counts.error
 				),
 				sprintf(
@@ -113,7 +113,7 @@ function Summary( { counts } ) {
 						'%d warning',
 						'%d warnings',
 						counts.warning,
-						'sister-sync'
+						'sceneshifter'
 					),
 					counts.warning
 				)
@@ -130,7 +130,7 @@ function FindingList( { findings } ) {
 	const { selectBlock } = useDispatch( 'core/block-editor' );
 
 	return (
-		<ul className="sister-sync-findings">
+		<ul className="sceneshifter-findings">
 			{ findings.map( ( finding, i ) => {
 				const clientId = finding.blockPath
 					? clientIdAtPath( blocks, finding.blockPath )
@@ -138,13 +138,15 @@ function FindingList( { findings } ) {
 				const body = (
 					<>
 						<span
-							className="sister-sync-badge"
+							className="sceneshifter-badge"
 							style={ { background: finding.sister.colour } }
 						>
 							{ finding.sister.label }
 						</span>
-						<span className="sister-sync-url">{ finding.url }</span>
-						<span className="sister-sync-location">
+						<span className="sceneshifter-url">
+							{ finding.url }
+						</span>
+						<span className="sceneshifter-location">
 							{ finding.location }
 							{ finding.count > 1 ? ` × ${ finding.count }` : '' }
 						</span>
@@ -154,18 +156,18 @@ function FindingList( { findings } ) {
 					<li
 						key={ i }
 						className={
-							'sister-sync-finding' +
+							'sceneshifter-finding' +
 							( finding.severity === 'error' ? ' is-error' : '' )
 						}
 					>
 						{ clientId ? (
 							<button
 								type="button"
-								className="sister-sync-finding__select"
+								className="sceneshifter-finding__select"
 								onClick={ () => selectBlock( clientId ) }
 								title={ __(
 									'Select this block',
-									'sister-sync'
+									'sceneshifter'
 								) }
 							>
 								{ body }
@@ -195,7 +197,7 @@ function Results( { status, data, error } ) {
 		return null;
 	}
 	return (
-		<div className="sister-sync-summary">
+		<div className="sceneshifter-summary">
 			<Summary counts={ data.counts } />
 			{ data.findings.length > 0 && (
 				<FindingList findings={ data.findings } />
@@ -208,13 +210,13 @@ function SidebarPanel() {
 	const check = useSisterCheck();
 	return (
 		<PluginDocumentSettingPanel
-			name="sister-sync"
-			title={ __( 'Sister Sync', 'sister-sync' ) }
+			name="sceneshifter"
+			title={ __( 'Sceneshifter', 'sceneshifter' ) }
 		>
 			<p>
 				{ __(
 					'Find links and images that point at another environment of this site.',
-					'sister-sync'
+					'sceneshifter'
 				) }
 			</p>
 			<Button
@@ -223,14 +225,14 @@ function SidebarPanel() {
 				isBusy={ check.status === 'loading' }
 				disabled={ check.status === 'loading' }
 			>
-				{ __( 'Check', 'sister-sync' ) }
+				{ __( 'Check', 'sceneshifter' ) }
 			</Button>
 			<Results { ...check } />
 		</PluginDocumentSettingPanel>
 	);
 }
 
-const blockPublish = Boolean( window.sisterSyncEditor?.blockPublish );
+const blockPublish = Boolean( window.sceneshifterEditor?.blockPublish );
 
 function PrePublishPanel() {
 	const check = useSisterCheck();
@@ -251,34 +253,34 @@ function PrePublishPanel() {
 		if ( ! blocked ) {
 			return undefined;
 		}
-		lockPostSaving( 'sister-sync' );
-		return () => unlockPostSaving( 'sister-sync' );
+		lockPostSaving( 'sceneshifter' );
+		return () => unlockPostSaving( 'sceneshifter' );
 	}, [ blocked, lockPostSaving, unlockPostSaving ] );
 
 	return (
 		<PluginPrePublishPanel
-			title={ __( 'Sister Sync', 'sister-sync' ) }
+			title={ __( 'Sceneshifter', 'sceneshifter' ) }
 			initialOpen={ true }
 		>
 			{ blocked && (
 				<Notice status="error" isDismissible={ false }>
 					{ __(
 						'Publishing is blocked on this site until the errors below are fixed.',
-						'sister-sync'
+						'sceneshifter'
 					) }
 				</Notice>
 			) }
 			<Results { ...check } />
 			{ check.status === 'done' && (
 				<Button variant="link" onClick={ run }>
-					{ __( 'Check again', 'sister-sync' ) }
+					{ __( 'Check again', 'sceneshifter' ) }
 				</Button>
 			) }
 		</PluginPrePublishPanel>
 	);
 }
 
-registerPlugin( 'sister-sync', {
+registerPlugin( 'sceneshifter', {
 	render: () => (
 		<>
 			<SidebarPanel />

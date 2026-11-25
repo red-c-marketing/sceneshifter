@@ -2,14 +2,14 @@
 /**
  * Where a URL points: this site, a sister site or somewhere else.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Url;
+namespace RedC\Sceneshifter\Url;
 
-use RedC\SisterSync\Registry\Site;
+use RedC\Sceneshifter\Registry\Site;
 
 final class Classification {
 

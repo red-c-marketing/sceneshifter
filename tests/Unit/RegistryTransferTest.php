@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Registry\IncomingRegistry;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Registry\RegistryBundle;
-use RedC\SisterSync\Registry\RegistryDiff;
+use RedC\Sceneshifter\Registry\IncomingRegistry;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Registry\RegistryBundle;
+use RedC\Sceneshifter\Registry\RegistryDiff;
 
 final class RegistryTransferTest extends TestCase {
 

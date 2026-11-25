@@ -3,12 +3,12 @@
  * The thing a finding was found in: a post, a menu item, a widget, an option
  * or a theme setting.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
 final class ScannedObject {
 

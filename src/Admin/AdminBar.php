@@ -2,14 +2,14 @@
 /**
  * A coloured badge in the admin bar showing which environment you are on.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Admin;
+namespace RedC\Sceneshifter\Admin;
 
-use RedC\SisterSync\Plugin;
+use RedC\Sceneshifter\Plugin;
 use WP_Admin_Bar;
 
 final class AdminBar {
@@ -32,12 +32,12 @@ final class AdminBar {
 			return;
 		}
 
-		$label  = null !== $site ? $site->label : __( 'Unknown environment', 'sister-sync' );
+		$label  = null !== $site ? $site->label : __( 'Unknown environment', 'sceneshifter' );
 		$colour = null !== $site ? $site->colour() : '#787c82';
 
 		$bar->add_node(
 			array(
-				'id'    => 'sister-sync-env',
+				'id'    => 'sceneshifter-env',
 				'title' => sprintf(
 					'<span style="background:%1$s;color:#fff;padding:2px 8px;border-radius:3px;font-weight:600;">%2$s</span>',
 					esc_attr( $colour ),
@@ -45,7 +45,7 @@ final class AdminBar {
 				),
 				'href'  => current_user_can( 'manage_options' ) ? admin_url( 'admin.php?page=' . SettingsPage::SLUG ) : false,
 				'meta'  => array(
-					'title' => __( 'Sister Sync environment', 'sister-sync' ),
+					'title' => __( 'Sceneshifter environment', 'sceneshifter' ),
 				),
 			)
 		);

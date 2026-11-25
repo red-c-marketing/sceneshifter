@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Scanner\ContentScanner;
-use RedC\SisterSync\Scanner\Finding;
-use RedC\SisterSync\Scanner\TextChunk;
-use RedC\SisterSync\SiteScan\ReportPage;
-use RedC\SisterSync\Url\UrlClassifier;
+use RedC\Sceneshifter\Scanner\ContentScanner;
+use RedC\Sceneshifter\Scanner\Finding;
+use RedC\Sceneshifter\Scanner\TextChunk;
+use RedC\Sceneshifter\SiteScan\ReportPage;
+use RedC\Sceneshifter\Url\UrlClassifier;
 
 final class SiteScanTest extends TestCase {
 

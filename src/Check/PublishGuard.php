@@ -7,15 +7,15 @@
  * Classic editor's Publish button); this is the server-side rule behind
  * them, so it also holds for anything that skips the editor's script.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Check;
+namespace RedC\Sceneshifter\Check;
 
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
 use stdClass;
 use WP_Error;
 use WP_Post;
@@ -24,7 +24,7 @@ use WP_REST_Request;
 final class PublishGuard {
 
 	private const PUBLISHED  = array( 'publish', 'future' );
-	private const NOTICE_KEY = 'sister_sync_publish_blocked_';
+	private const NOTICE_KEY = 'sceneshifter_publish_blocked_';
 
 	public function __construct( private readonly Plugin $plugin ) {}
 
@@ -67,7 +67,7 @@ final class PublishGuard {
 		if ( array() === $errors ) {
 			return $prepared;
 		}
-		return new WP_Error( 'sister_sync_publish_blocked', self::message( $errors ), array( 'status' => 400 ) );
+		return new WP_Error( 'sceneshifter_publish_blocked', self::message( $errors ), array( 'status' => 400 ) );
 	}
 
 	/**
@@ -106,7 +106,7 @@ final class PublishGuard {
 		if ( in_array( $post->post_status, self::PUBLISHED, true ) ) {
 			wp_die(
 				esc_html( self::message( $errors ) ),
-				esc_html__( 'Not updated', 'sister-sync' ),
+				esc_html__( 'Not updated', 'sceneshifter' ),
 				array(
 					'back_link' => true,
 					'response'  => 400,
@@ -136,7 +136,7 @@ final class PublishGuard {
 			return;
 		}
 		delete_transient( $key );
-		printf( '<div class="notice notice-error"><p><strong>%1$s</strong> %2$s</p></div>', esc_html__( 'Not published.', 'sister-sync' ), esc_html( $message ) );
+		printf( '<div class="notice notice-error"><p><strong>%1$s</strong> %2$s</p></div>', esc_html__( 'Not published.', 'sceneshifter' ), esc_html( $message ) );
 	}
 
 	/**
@@ -160,10 +160,10 @@ final class PublishGuard {
 		return sprintf(
 			/* translators: 1: number of links, 2: environment name, 3: first URL. */
 			_n(
-				'This content links to another environment %1$d time (%2$s: %3$s), and publishing is blocked on this site until it is fixed. Use the Sister Sync Check to find it.',
-				'This content links to other environments %1$d times (for example %2$s: %3$s), and publishing is blocked on this site until they are fixed. Use the Sister Sync Check to find them.',
+				'This content links to another environment %1$d time (%2$s: %3$s), and publishing is blocked on this site until it is fixed. Use the Sceneshifter Check to find it.',
+				'This content links to other environments %1$d times (for example %2$s: %3$s), and publishing is blocked on this site until they are fixed. Use the Sceneshifter Check to find them.',
 				$total,
-				'sister-sync'
+				'sceneshifter'
 			),
 			$total,
 			$first->sister->label,

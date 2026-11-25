@@ -2,21 +2,21 @@
 /**
  * The scan results table.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
 final class Schema {
 
 	public const DB_VERSION        = '1';
-	public const DB_VERSION_OPTION = 'sister_sync_db_version';
+	public const DB_VERSION_OPTION = 'sceneshifter_db_version';
 
 	public static function resultsTable(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'sistersync_scan_results';
+		return $wpdb->prefix . 'sceneshifter_scan_results';
 	}
 
 	/**

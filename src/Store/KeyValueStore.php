@@ -3,12 +3,12 @@
  * Somewhere to keep small pieces of state. The WordPress implementation uses
  * options; tests use an in-memory one.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Store;
+namespace RedC\Sceneshifter\Store;
 
 interface KeyValueStore {
 

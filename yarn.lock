@@ -10741,6 +10741,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"sceneshifter@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "sceneshifter@workspace:."
+  dependencies:
+    "@wordpress/scripts": "npm:^37.2.0"
+  languageName: unknown
+  linkType: soft
+
 "schema-utils@npm:^3.0.0":
   version: 3.3.0
   resolution: "schema-utils@npm:3.3.0"
@@ -11024,14 +11032,6 @@ __metadata:
   checksum: 10c0/68f8ee857f6a9415e9c07a1f31c7c561df8d5f1b1ba79bee3de583fa37da8718def5309f6b1c6e2c3ef77de45d74f5e49efc7959214443aa92d42e9c99180a4e
   languageName: node
   linkType: hard
-
-"sister-sync@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "sister-sync@workspace:."
-  dependencies:
-    "@wordpress/scripts": "npm:^37.2.0"
-  languageName: unknown
-  linkType: soft
 
 "slash@npm:^3.0.0":
   version: 3.0.0

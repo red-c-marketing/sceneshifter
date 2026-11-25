@@ -2,12 +2,12 @@
 /**
  * Turns the rows posted by the settings form into a registry.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Registry;
+namespace RedC\Sceneshifter\Registry;
 
 use InvalidArgumentException;
 

@@ -3,12 +3,12 @@
  * KeyValueStore backed by this site's options. On multisite each subsite has
  * its own options, so each subsite keeps its own keys and pairings.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Store;
+namespace RedC\Sceneshifter\Store;
 
 final class WpOptionStore implements KeyValueStore {
 

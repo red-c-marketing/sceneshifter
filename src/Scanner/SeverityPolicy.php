@@ -4,15 +4,15 @@
  * settings. By default, on live a link to any other environment is an
  * error, and everywhere else it is a warning.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
-use RedC\SisterSync\Registry\Site;
-use RedC\SisterSync\Store\CheckSettings;
+use RedC\Sceneshifter\Registry\Site;
+use RedC\Sceneshifter\Store\CheckSettings;
 
 final class SeverityPolicy {
 

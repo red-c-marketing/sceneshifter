@@ -3,20 +3,20 @@
  * A "Sister links" column on enabled list screens, showing counts from the
  * last completed site scan.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Check\CheckPage;
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Check\CheckPage;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
 
 final class ListColumn {
 
-	private const COLUMN = 'sister_sync';
+	private const COLUMN = 'sceneshifter';
 
 	/**
 	 * Counts for the posts on the current list page, loaded in one query.
@@ -49,7 +49,7 @@ final class ListColumn {
 	 * @return array<string, string>
 	 */
 	public function addColumn( array $columns ): array {
-		$columns[ self::COLUMN ] = __( 'Sister links', 'sister-sync' );
+		$columns[ self::COLUMN ] = __( 'Sister links', 'sceneshifter' );
 		return $columns;
 	}
 
@@ -66,18 +66,18 @@ final class ListColumn {
 
 		$counts = $this->counts[ $postId ] ?? null;
 		if ( null === $counts ) {
-			echo '<span aria-hidden="true">—</span><span class="screen-reader-text">' . esc_html__( 'None', 'sister-sync' ) . '</span>';
+			echo '<span aria-hidden="true">—</span><span class="screen-reader-text">' . esc_html__( 'None', 'sceneshifter' ) . '</span>';
 			return;
 		}
 
 		$parts = array();
 		if ( $counts[ Finding::ERROR ] > 0 ) {
 			/* translators: %d: number of errors. */
-			$parts[] = sprintf( '<span style="color:#d63638;font-weight:600;">%s</span>', esc_html( sprintf( _n( '%d error', '%d errors', $counts[ Finding::ERROR ], 'sister-sync' ), $counts[ Finding::ERROR ] ) ) );
+			$parts[] = sprintf( '<span style="color:#d63638;font-weight:600;">%s</span>', esc_html( sprintf( _n( '%d error', '%d errors', $counts[ Finding::ERROR ], 'sceneshifter' ), $counts[ Finding::ERROR ] ) ) );
 		}
 		if ( $counts[ Finding::WARNING ] > 0 ) {
 			/* translators: %d: number of warnings. */
-			$parts[] = sprintf( '<span style="color:#996800;">%s</span>', esc_html( sprintf( _n( '%d warning', '%d warnings', $counts[ Finding::WARNING ], 'sister-sync' ), $counts[ Finding::WARNING ] ) ) );
+			$parts[] = sprintf( '<span style="color:#996800;">%s</span>', esc_html( sprintf( _n( '%d warning', '%d warnings', $counts[ Finding::WARNING ], 'sceneshifter' ), $counts[ Finding::WARNING ] ) ) );
 		}
 		printf( '<a href="%1$s">%2$s</a>', esc_url( CheckPage::url( array( $postId ) ) ), implode( '<br>', $parts ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- parts escaped above.
 	}

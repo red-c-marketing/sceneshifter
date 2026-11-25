@@ -3,12 +3,12 @@
  * Gathers a post's content, excerpt and meta from WordPress and runs the
  * content scanner over it.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
 use WP_Post;
 

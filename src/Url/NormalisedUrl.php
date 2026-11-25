@@ -2,12 +2,12 @@
 /**
  * An absolute or root-relative URL broken into comparable parts.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Url;
+namespace RedC\Sceneshifter\Url;
 
 final class NormalisedUrl {
 

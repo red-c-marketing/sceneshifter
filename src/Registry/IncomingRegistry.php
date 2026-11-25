@@ -6,14 +6,14 @@
  * confirming. These checks stop the obvious mistakes and refuse a registry
  * that clearly didn't come from a sister.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Registry;
+namespace RedC\Sceneshifter\Registry;
 
-use RedC\SisterSync\Url\UrlNormaliser;
+use RedC\Sceneshifter\Url\UrlNormaliser;
 
 final class IncomingRegistry {
 

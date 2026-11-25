@@ -2,12 +2,12 @@
 /**
  * The result of working out which registry entry the current site is.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Registry;
+namespace RedC\Sceneshifter\Registry;
 
 final class Identity {
 

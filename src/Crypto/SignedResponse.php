@@ -6,22 +6,22 @@
  * The signature covers the request's sender, target and nonce, the HTTP
  * status and a SHA-256 hash of the exact response body.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 final class SignedResponse {
 
-	public const HEADER_SIGNATURE = 'X-Sister-Sync-Response-Signature';
+	public const HEADER_SIGNATURE = 'X-Sceneshifter-Response-Signature';
 
 	public static function canonical( string $requestSender, string $requestTarget, string $requestNonce, int $status, string $body ): string {
 		return implode(
 			"\n",
 			array(
-				'sister-sync-response-v' . SignedRequest::VERSION,
+				'sceneshifter-response-v' . SignedRequest::VERSION,
 				$requestSender,
 				$requestTarget,
 				$requestNonce,

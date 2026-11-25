@@ -2,15 +2,15 @@
 /**
  * Classifies URLs relative to the current site and its registry.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Url;
+namespace RedC\Sceneshifter\Url;
 
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Registry\Site;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Registry\Site;
 
 final class UrlClassifier {
 

@@ -1,5 +1,5 @@
 /**
- * Sister Sync report page: while a scan runs, ask the server to process the
+ * Sceneshifter report page: while a scan runs, ask the server to process the
  * next batch every couple of seconds and update the progress bar. This keeps
  * the scan moving even where background jobs don't run. Reloads the page
  * when the scan ends so the new results show.
@@ -11,12 +11,12 @@
 	const INTERVAL = 2000;
 
 	document.addEventListener( 'DOMContentLoaded', () => {
-		const box = document.getElementById( 'sister-sync-scan' );
+		const box = document.getElementById( 'sceneshifter-scan' );
 		if ( ! box || box.dataset.status !== 'running' ) {
 			return;
 		}
-		const bar = document.getElementById( 'sister-sync-scan-progress' );
-		const text = document.getElementById( 'sister-sync-scan-text' );
+		const bar = document.getElementById( 'sceneshifter-scan-progress' );
+		const text = document.getElementById( 'sceneshifter-scan-text' );
 
 		function update( status ) {
 			if ( status.status !== 'running' ) {
@@ -31,11 +31,11 @@
 					status.phase === 'extras'
 						? __(
 								'Posts done. Scanning menus, widgets, ACF options and theme settings…',
-								'sister-sync'
+								'sceneshifter'
 						  )
 						: sprintf(
 								/* translators: 1: posts scanned so far, 2: total posts. */
-								__( 'Scanning posts: %1$d of %2$d', 'sister-sync' ),
+								__( 'Scanning posts: %1$d of %2$d', 'sceneshifter' ),
 								status.processed,
 								status.total
 						  );
@@ -44,7 +44,7 @@
 		}
 
 		function tick() {
-			wp.apiFetch( { path: '/sister-sync/v1/scan/tick', method: 'POST' } )
+			wp.apiFetch( { path: '/sceneshifter/v1/scan/tick', method: 'POST' } )
 				.then( ( status ) => {
 					if ( update( status ) ) {
 						window.setTimeout( tick, INTERVAL );

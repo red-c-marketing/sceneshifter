@@ -4,12 +4,12 @@
  * refused before WordPress content code runs; callers answer with a plain
  * 404 so the endpoint gives nothing away.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 final class RequestVerifier {
 

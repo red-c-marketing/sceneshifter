@@ -1,26 +1,26 @@
 <?php
 /**
- * Sister Sync → Report: start a site-wide scan, watch its progress and browse
+ * Sceneshifter → Report: start a site-wide scan, watch its progress and browse
  * the findings of the last completed scan.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Check\CheckPage;
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Check\CheckPage;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
 
 final class ReportPage {
 
-	public const SLUG = 'sister-sync-report';
+	public const SLUG = 'sceneshifter-report';
 
-	private const START  = 'sister_sync_scan_start';
-	private const CANCEL = 'sister_sync_scan_cancel';
-	private const EXPORT = 'sister_sync_scan_export';
+	private const START  = 'sceneshifter_scan_start';
+	private const CANCEL = 'sceneshifter_scan_cancel';
+	private const EXPORT = 'sceneshifter_scan_export';
 
 	public function __construct(
 		private readonly Plugin $plugin,
@@ -39,8 +39,8 @@ final class ReportPage {
 	public function addMenu(): void {
 		add_submenu_page(
 			CheckPage::SLUG,
-			__( 'Sister references report', 'sister-sync' ),
-			__( 'Report', 'sister-sync' ),
+			__( 'Sister references report', 'sceneshifter' ),
+			__( 'Report', 'sceneshifter' ),
 			Plugin::CAP_VIEW,
 			self::SLUG,
 			array( $this, 'render' )
@@ -65,13 +65,13 @@ final class ReportPage {
 		if ( ! str_ends_with( $hook, '_page_' . self::SLUG ) ) {
 			return;
 		}
-		wp_enqueue_script( 'sister-sync-report', SISTER_SYNC_URL . 'assets/report.js', array( 'wp-api-fetch', 'wp-i18n' ), Plugin::assetVersion( 'assets/report.js' ), true );
-		wp_set_script_translations( 'sister-sync-report', 'sister-sync' );
+		wp_enqueue_script( 'sceneshifter-report', SCENESHIFTER_URL . 'assets/report.js', array( 'wp-api-fetch', 'wp-i18n' ), Plugin::assetVersion( 'assets/report.js' ), true );
+		wp_set_script_translations( 'sceneshifter-report', 'sceneshifter' );
 	}
 
 	public function render(): void {
 		if ( ! current_user_can( Plugin::CAP_VIEW ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this report.', 'sister-sync' ) );
+			wp_die( esc_html__( 'You do not have permission to view this report.', 'sceneshifter' ) );
 		}
 
 		$state    = ScanState::load();
@@ -80,13 +80,13 @@ final class ReportPage {
 		$canStart = current_user_can( 'manage_options' );
 		?>
 		<div class="wrap">
-			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sister references report', 'sister-sync' ); ?></h1>
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sister references report', 'sceneshifter' ); ?></h1>
 			<hr class="wp-header-end">
 
-			<p><?php esc_html_e( 'Every link and image on this site that points at another environment. Covers the enabled content types, synced patterns, templates and navigation, plus menu custom links, widgets, ACF options pages and theme settings.', 'sister-sync' ); ?></p>
+			<p><?php esc_html_e( 'Every link and image on this site that points at another environment. Covers the enabled content types, synced patterns, templates and navigation, plus menu custom links, widgets, ACF options pages and theme settings.', 'sceneshifter' ); ?></p>
 
 			<?php if ( ! SiteScanner::queueAvailable() ) : ?>
-				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Background processing is unavailable because Action Scheduler is not loaded (run composer install). Scans still work, but only while this page is open.', 'sister-sync' ); ?></p></div>
+				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Background processing is unavailable because Action Scheduler is not loaded (run composer install). Scans still work, but only while this page is open.', 'sceneshifter' ); ?></p></div>
 			<?php endif; ?>
 
 			<?php $this->renderStatus( $state, $canStart ); ?>
@@ -98,12 +98,12 @@ final class ReportPage {
 					<?php
 					$table = new ReportTable( $this->store, $this->plugin->registry(), $scanId, $filters );
 					$table->prepare_items();
-					$table->search_box( __( 'Search URLs and items', 'sister-sync' ), 'sister-sync-search' );
+					$table->search_box( __( 'Search URLs and items', 'sceneshifter' ), 'sceneshifter-search' );
 					$table->display();
 					?>
 				</form>
 			<?php elseif ( null === $state || ! $state->isRunning() ) : ?>
-				<p><?php esc_html_e( 'No scan has finished yet.', 'sister-sync' ); ?></p>
+				<p><?php esc_html_e( 'No scan has finished yet.', 'sceneshifter' ); ?></p>
 			<?php endif; ?>
 		</div>
 		<?php
@@ -112,30 +112,30 @@ final class ReportPage {
 	private function renderStatus( ?ScanState $state, bool $canStart ): void {
 		$status = ScanController::status( $state, $this->store );
 		?>
-		<div id="sister-sync-scan" class="card" style="max-width:none;" data-status="<?php echo esc_attr( (string) $status['status'] ); ?>">
+		<div id="sceneshifter-scan" class="card" style="max-width:none;" data-status="<?php echo esc_attr( (string) $status['status'] ); ?>">
 			<?php if ( null !== $state && $state->isRunning() ) : ?>
-				<h2><?php esc_html_e( 'Scan in progress', 'sister-sync' ); ?></h2>
-				<progress id="sister-sync-scan-progress" max="100" value="<?php echo (int) $status['percent']; ?>" style="width:100%;height:20px;"></progress>
-				<p id="sister-sync-scan-text"><?php echo esc_html( self::progressText( $state ) ); ?></p>
-				<p class="description"><?php esc_html_e( 'The scan carries on in the background if you leave this page. Results replace the report below when it finishes.', 'sister-sync' ); ?></p>
+				<h2><?php esc_html_e( 'Scan in progress', 'sceneshifter' ); ?></h2>
+				<progress id="sceneshifter-scan-progress" max="100" value="<?php echo (int) $status['percent']; ?>" style="width:100%;height:20px;"></progress>
+				<p id="sceneshifter-scan-text"><?php echo esc_html( self::progressText( $state ) ); ?></p>
+				<p class="description"><?php esc_html_e( 'The scan carries on in the background if you leave this page. Results replace the report below when it finishes.', 'sceneshifter' ); ?></p>
 				<?php if ( $canStart ) : ?>
-					<?php $this->actionButton( self::CANCEL, __( 'Cancel scan', 'sister-sync' ), 'secondary' ); ?>
+					<?php $this->actionButton( self::CANCEL, __( 'Cancel scan', 'sceneshifter' ), 'secondary' ); ?>
 				<?php endif; ?>
 			<?php else : ?>
 				<?php if ( null !== $state && ScanState::FAILED === $state->status ) : ?>
 					<div class="notice notice-error inline"><p>
 						<?php
 						/* translators: %s: error message. */
-						printf( esc_html__( 'The last scan failed: %s', 'sister-sync' ), esc_html( $state->error ) );
+						printf( esc_html__( 'The last scan failed: %s', 'sceneshifter' ), esc_html( $state->error ) );
 						?>
 					</p></div>
 				<?php elseif ( null !== $state && ScanState::CANCELLED === $state->status ) : ?>
-					<div class="notice notice-info inline"><p><?php esc_html_e( 'The last scan was cancelled. The report shows the scan before it.', 'sister-sync' ); ?></p></div>
+					<div class="notice notice-info inline"><p><?php esc_html_e( 'The last scan was cancelled. The report shows the scan before it.', 'sceneshifter' ); ?></p></div>
 				<?php endif; ?>
 				<?php if ( $canStart ) : ?>
-					<?php $this->actionButton( self::START, null === $state ? __( 'Run first scan', 'sister-sync' ) : __( 'Run new scan', 'sister-sync' ), 'primary' ); ?>
+					<?php $this->actionButton( self::START, null === $state ? __( 'Run first scan', 'sceneshifter' ) : __( 'Run new scan', 'sceneshifter' ), 'primary' ); ?>
 				<?php else : ?>
-					<p class="description"><?php esc_html_e( 'An administrator can run a new scan.', 'sister-sync' ); ?></p>
+					<p class="description"><?php esc_html_e( 'An administrator can run a new scan.', 'sceneshifter' ); ?></p>
 				<?php endif; ?>
 			<?php endif; ?>
 		</div>
@@ -151,11 +151,11 @@ final class ReportPage {
 		<h2>
 			<?php
 			if ( 0 === $summary['objects'] ) {
-				esc_html_e( 'No sister links found.', 'sister-sync' );
+				esc_html_e( 'No sister links found.', 'sceneshifter' );
 			} else {
 				printf(
 					/* translators: 1: number of items, 2: errors, 3: warnings. */
-					esc_html__( '%1$d items with sister links: %2$d errors, %3$d warnings', 'sister-sync' ),
+					esc_html__( '%1$d items with sister links: %2$d errors, %3$d warnings', 'sceneshifter' ),
 					(int) $summary['objects'],
 					(int) $summary[ Finding::ERROR ],
 					(int) $summary[ Finding::WARNING ]
@@ -169,9 +169,9 @@ final class ReportPage {
 				$user = get_userdata( $finished->startedBy );
 				printf(
 					/* translators: 1: date and time, 2: user name, 3: number of posts. */
-					esc_html__( 'Scan finished %1$s, started by %2$s. %3$d posts scanned.', 'sister-sync' ),
+					esc_html__( 'Scan finished %1$s, started by %2$s. %3$d posts scanned.', 'sceneshifter' ),
 					esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $finished->finishedAt ) ),
-					esc_html( $user ? $user->display_name : __( 'WP-CLI', 'sister-sync' ) ),
+					esc_html( $user ? $user->display_name : __( 'WP-CLI', 'sceneshifter' ) ),
 					(int) $finished->processed
 				);
 				?>
@@ -192,11 +192,11 @@ final class ReportPage {
 
 	public static function progressText( ScanState $state ): string {
 		if ( ScanState::PHASE_EXTRAS === $state->phase ) {
-			return __( 'Posts done. Scanning menus, widgets, ACF options and theme settings…', 'sister-sync' );
+			return __( 'Posts done. Scanning menus, widgets, ACF options and theme settings…', 'sceneshifter' );
 		}
 		return sprintf(
 			/* translators: 1: posts scanned so far, 2: total posts. */
-			__( 'Scanning posts: %1$d of %2$d', 'sister-sync' ),
+			__( 'Scanning posts: %1$d of %2$d', 'sceneshifter' ),
 			$state->processed,
 			$state->total
 		);
@@ -204,7 +204,7 @@ final class ReportPage {
 
 	public function start(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to run a scan.', 'sister-sync' ) );
+			wp_die( esc_html__( 'You do not have permission to run a scan.', 'sceneshifter' ) );
 		}
 		check_admin_referer( self::START );
 		$this->scanner->start( get_current_user_id() );
@@ -214,7 +214,7 @@ final class ReportPage {
 
 	public function cancel(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to cancel a scan.', 'sister-sync' ) );
+			wp_die( esc_html__( 'You do not have permission to cancel a scan.', 'sceneshifter' ) );
 		}
 		check_admin_referer( self::CANCEL );
 		$this->scanner->cancel();
@@ -224,7 +224,7 @@ final class ReportPage {
 
 	public function export(): void {
 		if ( ! current_user_can( Plugin::CAP_VIEW ) ) {
-			wp_die( esc_html__( 'You do not have permission to export this report.', 'sister-sync' ) );
+			wp_die( esc_html__( 'You do not have permission to export this report.', 'sceneshifter' ) );
 		}
 		check_admin_referer( self::EXPORT );
 

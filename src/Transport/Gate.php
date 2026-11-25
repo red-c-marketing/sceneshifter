@@ -4,18 +4,18 @@
  * before any content code. Every refusal looks the same to the caller: a
  * plain 404.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Transport;
+namespace RedC\Sceneshifter\Transport;
 
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\NonceStore;
-use RedC\SisterSync\Crypto\RequestVerifier;
-use RedC\SisterSync\Pairing\PairingStore;
-use RedC\SisterSync\Registry\Registry;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\NonceStore;
+use RedC\Sceneshifter\Crypto\RequestVerifier;
+use RedC\Sceneshifter\Pairing\PairingStore;
+use RedC\Sceneshifter\Registry\Registry;
 
 final class Gate {
 
@@ -23,7 +23,7 @@ final class Gate {
 	public const MAX_BODY = 1048576;
 
 	/**
-	 * @param string|null  $selfId   This site's registry ID, or null when Sister Sync is inactive here.
+	 * @param string|null  $selfId   This site's registry ID, or null when Sceneshifter is inactive here.
 	 * @param KeyPair|null $keys     This site's key pair, or null when it has none usable.
 	 * @param Registry     $registry The site list.
 	 * @param PairingStore $pairings Paired sisters.

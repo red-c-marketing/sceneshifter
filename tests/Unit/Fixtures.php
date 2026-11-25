@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
-use RedC\SisterSync\Registry\Registry;
+use RedC\Sceneshifter\Registry\Registry;
 
 final class Fixtures {
 

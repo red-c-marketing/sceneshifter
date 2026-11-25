@@ -2,12 +2,12 @@
 /**
  * In-memory KeyValueStore for tests and single-process tools.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Store;
+namespace RedC\Sceneshifter\Store;
 
 final class MemoryKeyValueStore implements KeyValueStore {
 

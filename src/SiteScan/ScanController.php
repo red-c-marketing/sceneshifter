@@ -2,19 +2,19 @@
 /**
  * REST endpoints the report page uses while a scan runs.
  *
- * GET  /sister-sync/v1/scan       current status
- * POST /sister-sync/v1/scan/tick  run one batch (keeps the scan moving while
+ * GET  /sceneshifter/v1/scan       current status
+ * POST /sceneshifter/v1/scan/tick  run one batch (keeps the scan moving while
  *                                 the page is open), then return the status
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Check\RestController;
-use RedC\SisterSync\Plugin;
+use RedC\Sceneshifter\Check\RestController;
+use RedC\Sceneshifter\Plugin;
 use WP_REST_Response;
 use WP_REST_Server;
 

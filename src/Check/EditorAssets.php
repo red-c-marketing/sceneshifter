@@ -3,14 +3,14 @@
  * Loads the block editor panel (built from assets/src/editor) on enabled
  * content types.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Check;
+namespace RedC\Sceneshifter\Check;
 
-use RedC\SisterSync\Plugin;
+use RedC\Sceneshifter\Plugin;
 
 final class EditorAssets {
 
@@ -26,29 +26,29 @@ final class EditorAssets {
 			return;
 		}
 
-		$assetFile = SISTER_SYNC_DIR . 'build/index.asset.php';
+		$assetFile = SCENESHIFTER_DIR . 'build/index.asset.php';
 		if ( ! is_readable( $assetFile ) ) {
 			return; // Not built yet: run `yarn build`.
 		}
 		$asset = require $assetFile;
 
 		wp_enqueue_script(
-			'sister-sync-editor',
-			SISTER_SYNC_URL . 'build/index.js',
+			'sceneshifter-editor',
+			SCENESHIFTER_URL . 'build/index.js',
 			$asset['dependencies'] ?? array(),
-			$asset['version'] ?? SISTER_SYNC_VERSION,
+			$asset['version'] ?? SCENESHIFTER_VERSION,
 			true
 		);
-		wp_set_script_translations( 'sister-sync-editor', 'sister-sync' );
+		wp_set_script_translations( 'sceneshifter-editor', 'sceneshifter' );
 		wp_add_inline_script(
-			'sister-sync-editor',
-			'window.sisterSyncEditor = ' . wp_json_encode( array( 'blockPublish' => $this->plugin->options()->checkSettings()->blockPublish ) ) . ';',
+			'sceneshifter-editor',
+			'window.sceneshifterEditor = ' . wp_json_encode( array( 'blockPublish' => $this->plugin->options()->checkSettings()->blockPublish ) ) . ';',
 			'before'
 		);
 
 		wp_enqueue_style(
-			'sister-sync-editor',
-			SISTER_SYNC_URL . 'assets/editor.css',
+			'sceneshifter-editor',
+			SCENESHIFTER_URL . 'assets/editor.css',
 			array(),
 			Plugin::assetVersion( 'assets/editor.css' )
 		);

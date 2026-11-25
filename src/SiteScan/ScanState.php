@@ -2,16 +2,16 @@
 /**
  * Progress of the current or most recent site scan, kept in one option.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
 final class ScanState {
 
-	public const OPTION = 'sister_sync_scan_state';
+	public const OPTION = 'sceneshifter_scan_state';
 
 	public const RUNNING   = 'running';
 	public const COMPLETE  = 'complete';

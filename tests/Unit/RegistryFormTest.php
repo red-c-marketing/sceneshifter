@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Registry\RegistryForm;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Registry\RegistryForm;
 
 final class RegistryFormTest extends TestCase {
 

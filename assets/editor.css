@@ -1,25 +1,25 @@
-.sister-sync-summary {
+.sceneshifter-summary {
 	margin: 8px 0;
 }
 
-.sister-sync-findings {
+.sceneshifter-findings {
 	margin: 8px 0 0;
 	padding: 0;
 	list-style: none;
 }
 
-.sister-sync-finding {
+.sceneshifter-finding {
 	margin: 0 0 10px;
 	padding: 6px 8px;
 	border-left: 4px solid #dba617;
 	background: #f6f7f7;
 }
 
-.sister-sync-finding.is-error {
+.sceneshifter-finding.is-error {
 	border-left-color: #d63638;
 }
 
-.sister-sync-finding button.sister-sync-finding__select {
+.sceneshifter-finding button.sceneshifter-finding__select {
 	display: block;
 	width: 100%;
 	padding: 0;
@@ -29,7 +29,7 @@
 	cursor: pointer;
 }
 
-.sister-sync-badge {
+.sceneshifter-badge {
 	display: inline-block;
 	padding: 1px 6px;
 	border-radius: 3px;
@@ -38,7 +38,7 @@
 	font-weight: 600;
 }
 
-.sister-sync-url {
+.sceneshifter-url {
 	display: block;
 	margin: 4px 0;
 	word-break: break-all;
@@ -46,7 +46,7 @@
 	font-size: 12px;
 }
 
-.sister-sync-location {
+.sceneshifter-location {
 	color: #646970;
 	font-size: 12px;
 }

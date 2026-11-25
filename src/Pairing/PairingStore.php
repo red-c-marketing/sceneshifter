@@ -2,18 +2,18 @@
 /**
  * The sisters this site is paired with, keyed by registry site ID.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
-use RedC\SisterSync\Store\KeyValueStore;
+use RedC\Sceneshifter\Store\KeyValueStore;
 
 final class PairingStore {
 
-	public const OPTION = 'sister_sync_pairings';
+	public const OPTION = 'sceneshifter_pairings';
 
 	public function __construct( private readonly KeyValueStore $store ) {}
 

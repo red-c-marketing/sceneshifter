@@ -2,12 +2,12 @@
 /**
  * A piece of text to scan, with where it came from.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
 final class TextChunk {
 

@@ -2,14 +2,14 @@
 /**
  * What this site knows about one paired sister.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
-use RedC\SisterSync\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\KeyPair;
 
 final class Pairing {
 

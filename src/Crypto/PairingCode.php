@@ -3,12 +3,12 @@
  * The one-time code an admin copies from one site to the other to pair
  * them: the site's ID, its public key, a random token and an expiry.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 use InvalidArgumentException;
 use JsonException;
@@ -60,7 +60,7 @@ final class PairingCode {
 	public static function decode( string $code, ?int $now = null ): self {
 		$code = preg_replace( '/\s+/', '', $code ) ?? '';
 		if ( ! str_starts_with( $code, self::PREFIX ) ) {
-			throw new InvalidArgumentException( 'This isn\'t a Sister Sync pairing code.' );
+			throw new InvalidArgumentException( 'This isn\'t a Sceneshifter pairing code.' );
 		}
 		$json = base64_decode( strtr( substr( $code, strlen( self::PREFIX ) ), '-_', '+/' ), true );
 		try {

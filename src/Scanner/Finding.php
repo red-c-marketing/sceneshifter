@@ -2,14 +2,14 @@
 /**
  * One reference to a sister site, at one location.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
-use RedC\SisterSync\Registry\Site;
+use RedC\Sceneshifter\Registry\Site;
 
 final class Finding {
 

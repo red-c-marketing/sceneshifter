@@ -3,49 +3,49 @@
  * Plugin bootstrap: works out which environment this is and wires up the
  * features that should run.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync;
+namespace RedC\Sceneshifter;
 
-use RedC\SisterSync\Admin\AdminBar;
-use RedC\SisterSync\Admin\Notices;
-use RedC\SisterSync\Admin\RegistryTransfer;
-use RedC\SisterSync\Admin\SettingsPage;
-use RedC\SisterSync\Check\CheckPage;
-use RedC\SisterSync\Check\ClassicMetaBox;
-use RedC\SisterSync\Check\EditorAssets;
-use RedC\SisterSync\Check\ListIntegration;
-use RedC\SisterSync\Check\PublishGuard;
-use RedC\SisterSync\Check\RestController;
-use RedC\SisterSync\Cli\Command;
-use RedC\SisterSync\Pairing\SecretMaterial;
-use RedC\SisterSync\Pairing\Sisters;
-use RedC\SisterSync\Registry\Identity;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Scanner\ContentScanner;
-use RedC\SisterSync\Scanner\PostScanner;
-use RedC\SisterSync\Scanner\SeverityPolicy;
-use RedC\SisterSync\SiteScan\ListColumn;
-use RedC\SisterSync\SiteScan\ReportPage;
-use RedC\SisterSync\SiteScan\ScanController;
-use RedC\SisterSync\SiteScan\ScheduledScan;
-use RedC\SisterSync\SiteScan\SiteScanner;
-use RedC\SisterSync\Store\DbNonceStore;
-use RedC\SisterSync\Store\Options;
-use RedC\SisterSync\Store\WpOptionStore;
-use RedC\SisterSync\Transport\SignedEndpoints;
-use RedC\SisterSync\Url\UrlClassifier;
+use RedC\Sceneshifter\Admin\AdminBar;
+use RedC\Sceneshifter\Admin\Notices;
+use RedC\Sceneshifter\Admin\RegistryTransfer;
+use RedC\Sceneshifter\Admin\SettingsPage;
+use RedC\Sceneshifter\Check\CheckPage;
+use RedC\Sceneshifter\Check\ClassicMetaBox;
+use RedC\Sceneshifter\Check\EditorAssets;
+use RedC\Sceneshifter\Check\ListIntegration;
+use RedC\Sceneshifter\Check\PublishGuard;
+use RedC\Sceneshifter\Check\RestController;
+use RedC\Sceneshifter\Cli\Command;
+use RedC\Sceneshifter\Pairing\SecretMaterial;
+use RedC\Sceneshifter\Pairing\Sisters;
+use RedC\Sceneshifter\Registry\Identity;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Scanner\ContentScanner;
+use RedC\Sceneshifter\Scanner\PostScanner;
+use RedC\Sceneshifter\Scanner\SeverityPolicy;
+use RedC\Sceneshifter\SiteScan\ListColumn;
+use RedC\Sceneshifter\SiteScan\ReportPage;
+use RedC\Sceneshifter\SiteScan\ScanController;
+use RedC\Sceneshifter\SiteScan\ScheduledScan;
+use RedC\Sceneshifter\SiteScan\SiteScanner;
+use RedC\Sceneshifter\Store\DbNonceStore;
+use RedC\Sceneshifter\Store\Options;
+use RedC\Sceneshifter\Store\WpOptionStore;
+use RedC\Sceneshifter\Transport\SignedEndpoints;
+use RedC\Sceneshifter\Url\UrlClassifier;
 
 final class Plugin {
 
-	public const CAP_TRANSFER = 'sistersync_transfer';
-	public const CAP_VIEW     = 'sistersync_view';
+	public const CAP_TRANSFER = 'sceneshifter_transfer';
+	public const CAP_VIEW     = 'sceneshifter_view';
 
 	public const CAPS_VERSION        = '1';
-	public const CAPS_VERSION_OPTION = 'sister_sync_caps_version';
+	public const CAPS_VERSION_OPTION = 'sceneshifter_caps_version';
 
 	/**
 	 * Version of the package format sisters exchange. Sisters with a
@@ -77,8 +77,8 @@ final class Plugin {
 	 * keep the old copy. Falls back to the plugin version.
 	 */
 	public static function assetVersion( string $relativePath ): string {
-		$mtime = @filemtime( SISTER_SYNC_DIR . $relativePath ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		return false === $mtime ? SISTER_SYNC_VERSION : SISTER_SYNC_VERSION . '.' . $mtime;
+		$mtime = @filemtime( SCENESHIFTER_DIR . $relativePath ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return false === $mtime ? SCENESHIFTER_VERSION : SCENESHIFTER_VERSION . '.' . $mtime;
 	}
 
 	public static function activate(): void {
@@ -119,7 +119,7 @@ final class Plugin {
 		// every signed request with the same plain 404.
 		( new SignedEndpoints( $this ) )->register();
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			\WP_CLI::add_command( 'sistersync', new Command( $this ) );
+			\WP_CLI::add_command( 'sceneshifter', new Command( $this ) );
 		}
 
 		if ( is_admin() ) {
@@ -164,7 +164,7 @@ final class Plugin {
 		if ( null === $this->contentScanner ) {
 			$site = $this->identity->site;
 			if ( null === $site || ! $this->identity->isActive() ) {
-				throw new \LogicException( 'Sister Sync is inactive: this site is not identified in the registry.' );
+				throw new \LogicException( 'Sceneshifter is inactive: this site is not identified in the registry.' );
 			}
 			$this->contentScanner = new ContentScanner(
 				new UrlClassifier( $this->registry, $site ),

@@ -2,22 +2,22 @@
 /**
  * Finds links to sister environments from the command line.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Cli;
+namespace RedC\Sceneshifter\Cli;
 
-use RedC\SisterSync\Admin\PairingTab;
-use RedC\SisterSync\Check\RestController;
-use RedC\SisterSync\Pairing\Sisters;
-use RedC\SisterSync\Pairing\SiteKeys;
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
-use RedC\SisterSync\SiteScan\ReportFilters;
-use RedC\SisterSync\SiteScan\ResultStore;
-use RedC\SisterSync\SiteScan\ScanState;
+use RedC\Sceneshifter\Admin\PairingTab;
+use RedC\Sceneshifter\Check\RestController;
+use RedC\Sceneshifter\Pairing\Sisters;
+use RedC\Sceneshifter\Pairing\SiteKeys;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
+use RedC\Sceneshifter\SiteScan\ReportFilters;
+use RedC\Sceneshifter\SiteScan\ResultStore;
+use RedC\Sceneshifter\SiteScan\ScanState;
 use WP_CLI;
 use WP_CLI\Utils;
 
@@ -43,7 +43,7 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp sistersync check 12 34
+	 *     wp sceneshifter check 12 34
 	 *
 	 * @param list<string>          $args
 	 * @param array<string, string> $assoc
@@ -73,7 +73,7 @@ final class Command {
 	 * [--save]
 	 * : Run the full site scan (posts, synced patterns, templates, menus,
 	 * widgets, ACF options, theme settings) and save it as the report shown
-	 * in Sister Sync → Report. Ignores --post_type.
+	 * in Sceneshifter → Report. Ignores --post_type.
 	 *
 	 * [--format=<format>]
 	 * : table, csv, json or yaml.
@@ -83,9 +83,9 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp sistersync scan
-	 *     wp sistersync scan --post_type=page --format=csv > sister-links.csv
-	 *     wp sistersync scan --save
+	 *     wp sceneshifter scan
+	 *     wp sceneshifter scan --post_type=page --format=csv > sister-links.csv
+	 *     wp sceneshifter scan --save
 	 *
 	 * @param list<string>          $args
 	 * @param array<string, string> $assoc
@@ -146,8 +146,8 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp sistersync status
-	 *     wp sistersync status --url=https://staging.example.com
+	 *     wp sceneshifter status
+	 *     wp sceneshifter status --url=https://staging.example.com
 	 *
 	 * @param list<string>          $args
 	 * @param array<string, string> $assoc
@@ -158,7 +158,7 @@ final class Command {
 		$sisters  = $this->plugin->sisters();
 		$self     = $sisters->self();
 		if ( null === $self ) {
-			WP_CLI::error( sprintf( 'Sister Sync is inactive on this site (%s). Check the site list in Sister Sync → Settings.', $identity->status ) );
+			WP_CLI::error( sprintf( 'Sceneshifter is inactive on this site (%s). Check the site list in Sceneshifter → Settings.', $identity->status ) );
 		}
 
 		$keys = $sisters->keys();
@@ -169,7 +169,7 @@ final class Command {
 			} elseif ( null !== $keys && null !== $keys->fingerprint() ) {
 				WP_CLI::log( 'Key fingerprint: ' . $keys->fingerprint() );
 			} else {
-				WP_CLI::log( 'No key yet. It is made the first time you open Sister Sync → Settings → Pairing.' );
+				WP_CLI::log( 'No key yet. It is made the first time you open Sceneshifter → Settings → Pairing.' );
 			}
 		}
 
@@ -215,7 +215,7 @@ final class Command {
 
 	private function requireActive(): void {
 		if ( ! $this->plugin->identity()->isActive() ) {
-			WP_CLI::error( 'Sister Sync is inactive on this site. Check the site list in Sister Sync → Settings.' );
+			WP_CLI::error( 'Sceneshifter is inactive on this site. Check the site list in Sceneshifter → Settings.' );
 		}
 	}
 

@@ -1,7 +1,7 @@
 {
-  "name": "sister-sync",
+  "name": "sceneshifter",
   "private": true,
-  "description": "Editor assets for the Sister Sync WordPress plugin.",
+  "description": "Editor assets for the Sceneshifter WordPress plugin.",
   "license": "GPL-2.0-or-later",
   "scripts": {
     "build": "wp-scripts build assets/src/editor/index.js --output-path=build",

@@ -2,21 +2,21 @@
 /**
  * Reads and writes rows in the scan results table.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Scanner\Finding;
 
 final class ResultStore {
 
 	/**
 	 * ID of the most recent completed scan, which the report shows.
 	 */
-	public const REPORT_SCAN_OPTION = 'sister_sync_report_scan';
+	public const REPORT_SCAN_OPTION = 'sceneshifter_report_scan';
 
 	/**
 	 * @param list<Finding> $findings

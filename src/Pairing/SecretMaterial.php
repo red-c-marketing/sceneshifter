@@ -7,12 +7,12 @@
  * here", but those travel with a copied database, which is exactly what the
  * vault must not trust.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
 final class SecretMaterial {
 

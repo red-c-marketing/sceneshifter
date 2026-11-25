@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Registry\Site;
-use RedC\SisterSync\Rewrite\BlockRewriter;
-use RedC\SisterSync\Rewrite\IdMap;
-use RedC\SisterSync\Rewrite\Rewrite;
-use RedC\SisterSync\Rewrite\Unresolved;
-use RedC\SisterSync\Rewrite\UrlRewriter;
+use RedC\Sceneshifter\Registry\Site;
+use RedC\Sceneshifter\Rewrite\BlockRewriter;
+use RedC\Sceneshifter\Rewrite\IdMap;
+use RedC\Sceneshifter\Rewrite\Rewrite;
+use RedC\Sceneshifter\Rewrite\Unresolved;
+use RedC\Sceneshifter\Rewrite\UrlRewriter;
 
 final class RewriteTest extends TestCase {
 

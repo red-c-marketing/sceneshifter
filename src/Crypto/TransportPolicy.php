@@ -3,12 +3,12 @@
  * Which sister addresses requests may be sent to: HTTPS only, except local
  * development hosts when the dev setting allows plain HTTP.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 final class TransportPolicy {
 

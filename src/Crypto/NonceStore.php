@@ -2,12 +2,12 @@
 /**
  * Remembers request nonces so a captured request can't be replayed.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 interface NonceStore {
 

@@ -2,27 +2,27 @@
 /**
  * REST endpoints that only paired sisters can call.
  *
- *   POST /wp-json/sister-sync/v1/pair    Pairing confirmation (see Handshake).
- *   GET  /wp-json/sister-sync/v1/status  Site ID, versions, and that the caller is paired.
- *   POST /wp-json/sister-sync/v1/unpair  The caller asks this site to forget it.
+ *   POST /wp-json/sceneshifter/v1/pair    Pairing confirmation (see Handshake).
+ *   GET  /wp-json/sceneshifter/v1/status  Site ID, versions, and that the caller is paired.
+ *   POST /wp-json/sceneshifter/v1/unpair  The caller asks this site to forget it.
  *
  * Every request is checked before anything else runs. Anything that fails,
  * including any request while this site is inactive or has no usable key,
  * gets the same plain 404 WordPress gives for a route that doesn't exist.
  * Successful answers are signed with this site's key.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Transport;
+namespace RedC\Sceneshifter\Transport;
 
-use RedC\SisterSync\Check\RestController;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Crypto\SignedResponse;
-use RedC\SisterSync\Plugin;
+use RedC\Sceneshifter\Check\RestController;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Crypto\SignedResponse;
+use RedC\Sceneshifter\Plugin;
 use WP_Error;
 use WP_HTTP_Response;
 use WP_REST_Request;
@@ -133,7 +133,7 @@ final class SignedEndpoints {
 			array(
 				'site'             => $self->id,
 				'label'            => $self->label,
-				'plugin_version'   => SISTER_SYNC_VERSION,
+				'plugin_version'   => SCENESHIFTER_VERSION,
 				'format'           => Plugin::PACKAGE_FORMAT,
 				'registry_version' => $this->plugin->registry()->version,
 				'paired'           => true,

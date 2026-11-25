@@ -1,5 +1,5 @@
 {
-    "name": "redc/sister-sync",
+    "name": "redc/sceneshifter",
     "description": "Finds links to sister environments and moves content between them safely.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
@@ -16,12 +16,12 @@
     },
     "autoload": {
         "psr-4": {
-            "RedC\\SisterSync\\": "src/"
+            "RedC\\Sceneshifter\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "RedC\\SisterSync\\Tests\\": "tests/"
+            "RedC\\Sceneshifter\\Tests\\": "tests/"
         }
     },
     "scripts": {

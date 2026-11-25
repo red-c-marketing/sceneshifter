@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\MemoryNonceStore;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Pairing\Pairing;
-use RedC\SisterSync\Pairing\PairingStore;
-use RedC\SisterSync\Store\MemoryKeyValueStore;
-use RedC\SisterSync\Transport\Gate;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\MemoryNonceStore;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Pairing\Pairing;
+use RedC\Sceneshifter\Pairing\PairingStore;
+use RedC\Sceneshifter\Store\MemoryKeyValueStore;
+use RedC\Sceneshifter\Transport\Gate;
 
 /**
  * The permission layer for signed endpoints. Anything it refuses is
@@ -20,7 +20,7 @@ use RedC\SisterSync\Transport\Gate;
 final class GateTest extends TestCase {
 
 	private const NOW   = 1800000000;
-	private const ROUTE = '/sister-sync/v1/status';
+	private const ROUTE = '/sceneshifter/v1/status';
 
 	private KeyPair $live;
 	private KeyPair $staging;
@@ -49,7 +49,7 @@ final class GateTest extends TestCase {
 			'stale'             => array( $this->gate(), 'GET', self::ROUTE, $this->headers(), '', self::NOW + 301 ),
 			'from the future'   => array( $this->gate(), 'GET', self::ROUTE, $this->headers(), '', self::NOW - 301 ),
 			'unpaired sender'   => array( $this->gate(), 'GET', self::ROUTE, SignedRequest::headers( $attacker, 'GET', self::ROUTE, 'uat', 'live', '', self::NOW ), '', self::NOW ),
-			'other route'       => array( $this->gate(), 'GET', '/sister-sync/v1/import', $this->headers(), '', self::NOW ),
+			'other route'       => array( $this->gate(), 'GET', '/sceneshifter/v1/import', $this->headers(), '', self::NOW ),
 			'body added'        => array( $this->gate(), 'GET', self::ROUTE, $this->headers(), '{"x":1}', self::NOW ),
 			'unsigned'          => array( $this->gate(), 'GET', self::ROUTE, array(), '', self::NOW ),
 			'inert site'        => array( new Gate( null, $this->live, Fixtures::registry(), $this->pairings, $this->nonces ), 'GET', self::ROUTE, $this->headers(), '', self::NOW ),
@@ -64,7 +64,7 @@ final class GateTest extends TestCase {
 	public function test_a_paired_sister_removed_from_the_site_list_is_refused(): void {
 		$registry = Fixtures::registry()->toArray();
 		$registry['sites'] = array_values( array_filter( $registry['sites'], static fn( array $s ): bool => 'staging' !== $s['id'] ) );
-		$gate = new Gate( 'live', $this->live, \RedC\SisterSync\Registry\Registry::fromArray( $registry ), $this->pairings, $this->nonces );
+		$gate = new Gate( 'live', $this->live, \RedC\Sceneshifter\Registry\Registry::fromArray( $registry ), $this->pairings, $this->nonces );
 
 		$this->assertNull( $gate->verify( 'GET', self::ROUTE, $this->headers(), '', self::NOW ) );
 	}

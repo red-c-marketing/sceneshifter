@@ -7,21 +7,21 @@
  * subsite the first time that subsite loads, since options and the table
  * prefix are per subsite. Safe to run more than once.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync;
+namespace RedC\Sceneshifter;
 
-use RedC\SisterSync\SiteScan\Schema;
-use RedC\SisterSync\Store\DbNonceStore;
+use RedC\Sceneshifter\SiteScan\Schema;
+use RedC\Sceneshifter\Store\DbNonceStore;
 
 final class Upgrade {
 
 	/** Bump when a table changes or a new one is added. */
 	public const VERSION = '2';
-	public const OPTION  = 'sister_sync_schema_version';
+	public const OPTION  = 'sceneshifter_schema_version';
 
 	/**
 	 * Cheap enough for every load: two autoloaded option reads.

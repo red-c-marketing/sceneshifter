@@ -2,12 +2,12 @@
 /**
  * An Ed25519 signing key pair.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 use InvalidArgumentException;
 

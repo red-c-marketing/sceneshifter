@@ -8,21 +8,21 @@
  * same salts), the site needs a new key and new pairings. Until then it
  * sends and accepts no signed requests.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
 use InvalidArgumentException;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\KeyVault;
-use RedC\SisterSync\Store\KeyValueStore;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\KeyVault;
+use RedC\Sceneshifter\Store\KeyValueStore;
 
 final class SiteKeys {
 
-	public const OPTION = 'sister_sync_keys';
+	public const OPTION = 'sceneshifter_keys';
 
 	public const OK         = 'ok';
 	public const MISSING    = 'missing';

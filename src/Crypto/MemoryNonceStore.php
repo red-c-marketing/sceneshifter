@@ -2,12 +2,12 @@
 /**
  * In-memory nonce store for tests and single-process tools.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 final class MemoryNonceStore implements NonceStore {
 

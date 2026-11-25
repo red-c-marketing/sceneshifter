@@ -7,12 +7,12 @@
  * blocks) are skipped and not counted, so a path matches the block list the
  * editor shows.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
 final class BlockWalker {
 

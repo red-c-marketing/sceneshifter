@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\MemoryNonceStore;
-use RedC\SisterSync\Crypto\RequestVerifier;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Crypto\SignedResponse;
-use RedC\SisterSync\Crypto\TransportPolicy;
-use RedC\SisterSync\Pairing\Pairing;
-use RedC\SisterSync\Pairing\PairingStore;
-use RedC\SisterSync\Store\MemoryKeyValueStore;
-use RedC\SisterSync\Transport\Transport;
-use RedC\SisterSync\Transport\TransportResult;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\MemoryNonceStore;
+use RedC\Sceneshifter\Crypto\RequestVerifier;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Crypto\SignedResponse;
+use RedC\Sceneshifter\Crypto\TransportPolicy;
+use RedC\Sceneshifter\Pairing\Pairing;
+use RedC\Sceneshifter\Pairing\PairingStore;
+use RedC\Sceneshifter\Store\MemoryKeyValueStore;
+use RedC\Sceneshifter\Transport\Transport;
+use RedC\Sceneshifter\Transport\TransportResult;
 
 final class TransportTest extends TestCase {
 
 	private const NOW   = 1800000000.25;
-	private const ROUTE = '/sister-sync/v1/status';
+	private const ROUTE = '/sceneshifter/v1/status';
 
 	private KeyPair $ours;
 	private KeyPair $theirs;
@@ -47,7 +47,7 @@ final class TransportTest extends TestCase {
 
 		$call = $this->calls[0];
 		$this->assertSame( 'GET', $call['method'] );
-		$this->assertSame( 'https://www.client.co.uk/wp-json/sister-sync/v1/status', $call['url'] );
+		$this->assertSame( 'https://www.client.co.uk/wp-json/sceneshifter/v1/status', $call['url'] );
 		$this->assertSame( '', $call['body'] );
 		$this->assertArrayNotHasKey( 'Content-Type', $call['headers'] );
 		$this->assertSame( 'staging', $call['headers'][ SignedRequest::HEADER_SENDER ] );
@@ -63,9 +63,9 @@ final class TransportTest extends TestCase {
 	public function test_posts_json_and_keeps_subfolder_addresses(): void {
 		$this->pairings->save( new Pairing( 'uat', $this->theirs->publicKey, 1700000000 ) );
 
-		$this->transport( $this->answer( array( 'ok' => true ) ) )->send( 'uat', 'POST', '/sister-sync/v1/import', array( 'title' => 'A/B' ) );
+		$this->transport( $this->answer( array( 'ok' => true ) ) )->send( 'uat', 'POST', '/sceneshifter/v1/import', array( 'title' => 'A/B' ) );
 
-		$this->assertSame( 'https://agency.example.com/clients/client/wp-json/sister-sync/v1/import', $this->calls[0]['url'] );
+		$this->assertSame( 'https://agency.example.com/clients/client/wp-json/sceneshifter/v1/import', $this->calls[0]['url'] );
 		$this->assertSame( '{"title":"A/B"}', $this->calls[0]['body'] );
 		$this->assertSame( 'application/json', $this->calls[0]['headers']['Content-Type'] );
 	}
@@ -78,7 +78,7 @@ final class TransportTest extends TestCase {
 
 		$dev = $this->transport( $this->answer( array( 'site' => 'dev' ) ), true )->send( 'dev', 'GET', self::ROUTE );
 		$this->assertTrue( $dev->ok(), $dev->message );
-		$this->assertSame( 'http://client.test:8080/wp-json/sister-sync/v1/status', $this->calls[0]['url'] );
+		$this->assertSame( 'http://client.test:8080/wp-json/sceneshifter/v1/status', $this->calls[0]['url'] );
 	}
 
 	public function test_refuses_sites_that_are_not_paired_or_not_listed(): void {
@@ -123,7 +123,7 @@ final class TransportTest extends TestCase {
 			$reply = '{"site":"live"}';
 			return array(
 				'status'  => 200,
-				'headers' => array( 'X-Sister-Sync-Response-Signature' => SignedResponse::sign( $impostor, 'staging', 'live', $headers[ SignedRequest::HEADER_NONCE ], 200, $reply ) ),
+				'headers' => array( 'X-Sceneshifter-Response-Signature' => SignedResponse::sign( $impostor, 'staging', 'live', $headers[ SignedRequest::HEADER_NONCE ], 200, $reply ) ),
 				'body'    => $reply,
 			);
 		};
@@ -133,7 +133,7 @@ final class TransportTest extends TestCase {
 			$reply = '{"site":"live"}';
 			return array(
 				'status'  => 200,
-				'headers' => array( 'x-sister-sync-response-signature' => SignedResponse::sign( $this->theirs, 'staging', 'live', 'an-old-nonce-from-before', 200, $reply ) ),
+				'headers' => array( 'x-sceneshifter-response-signature' => SignedResponse::sign( $this->theirs, 'staging', 'live', 'an-old-nonce-from-before', 200, $reply ) ),
 				'body'    => $reply,
 			);
 		};
@@ -144,7 +144,7 @@ final class TransportTest extends TestCase {
 		$http = function ( string $method, string $url, array $headers ): array {
 			return array(
 				'status'  => 200,
-				'headers' => array( 'x-sister-sync-response-signature' => SignedResponse::sign( $this->theirs, 'staging', 'live', $headers[ SignedRequest::HEADER_NONCE ], 200, '<html>' ) ),
+				'headers' => array( 'x-sceneshifter-response-signature' => SignedResponse::sign( $this->theirs, 'staging', 'live', $headers[ SignedRequest::HEADER_NONCE ], 200, '<html>' ) ),
 				'body'    => '<html>',
 			);
 		};
@@ -183,7 +183,7 @@ final class TransportTest extends TestCase {
 			$body = (string) json_encode( $data );
 			return array(
 				'status'  => 200,
-				'headers' => array( 'X-Sister-Sync-Response-Signature' => SignedResponse::sign( $this->theirs, $headers[ SignedRequest::HEADER_SENDER ], $headers[ SignedRequest::HEADER_TARGET ], $headers[ SignedRequest::HEADER_NONCE ], 200, $body ) ),
+				'headers' => array( 'X-Sceneshifter-Response-Signature' => SignedResponse::sign( $this->theirs, $headers[ SignedRequest::HEADER_SENDER ], $headers[ SignedRequest::HEADER_TARGET ], $headers[ SignedRequest::HEADER_NONCE ], 200, $body ) ),
 				'body'    => $body,
 			);
 		};

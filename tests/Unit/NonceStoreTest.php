@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Crypto\MemoryNonceStore;
-use RedC\SisterSync\Crypto\NonceStore;
-use RedC\SisterSync\Store\DbNonceStore;
+use RedC\Sceneshifter\Crypto\MemoryNonceStore;
+use RedC\Sceneshifter\Crypto\NonceStore;
+use RedC\Sceneshifter\Store\DbNonceStore;
 
 /**
  * Every NonceStore must refuse a nonce it has already seen from a sender
@@ -24,7 +24,7 @@ final class NonceStoreTest extends TestCase {
 	public static function stores(): array {
 		return array(
 			'memory'   => array( static fn(): NonceStore => new MemoryNonceStore() ),
-			'database' => array( static fn(): NonceStore => new DbNonceStore( new FakeWpdb(), 'wp_sistersync_nonces', static fn(): int => self::NOW, static fn(): bool => false ) ),
+			'database' => array( static fn(): NonceStore => new DbNonceStore( new FakeWpdb(), 'wp_sceneshifter_nonces', static fn(): int => self::NOW, static fn(): bool => false ) ),
 		);
 	}
 
@@ -45,7 +45,7 @@ final class NonceStoreTest extends TestCase {
 		$db    = new FakeWpdb();
 		$now   = self::NOW;
 		$purge = false;
-		$store = new DbNonceStore( $db, 'wp_sistersync_nonces', static function () use ( &$now ): int {
+		$store = new DbNonceStore( $db, 'wp_sceneshifter_nonces', static function () use ( &$now ): int {
 			return $now;
 		}, static function () use ( &$purge ): bool {
 			return $purge;

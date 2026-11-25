@@ -3,8 +3,8 @@
  * Constants the plugin defines at runtime, for static analysis.
  */
 
-define( 'SISTER_SYNC_VERSION', '0.0.0' );
-define( 'SISTER_SYNC_FILE', __DIR__ . '/../sister-sync.php' );
-define( 'SISTER_SYNC_DIR', dirname( __DIR__ ) . '/' );
-define( 'SISTER_SYNC_URL', 'https://example.test/wp-content/plugins/sister-sync/' );
-define( 'WP_UNINSTALL_PLUGIN', 'sister-sync/sister-sync.php' );
+define( 'SCENESHIFTER_VERSION', '0.0.0' );
+define( 'SCENESHIFTER_FILE', __DIR__ . '/../sceneshifter.php' );
+define( 'SCENESHIFTER_DIR', dirname( __DIR__ ) . '/' );
+define( 'SCENESHIFTER_URL', 'https://example.test/wp-content/plugins/sceneshifter/' );
+define( 'WP_UNINSTALL_PLUGIN', 'sceneshifter/sceneshifter.php' );

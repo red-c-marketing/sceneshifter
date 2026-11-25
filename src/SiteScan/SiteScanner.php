@@ -9,21 +9,21 @@
  * lock makes sure only one batch runs at a time, and re-running a batch after
  * a crash can't double-count.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\TextChunk;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\TextChunk;
 use Throwable;
 
 final class SiteScanner {
 
-	public const HOOK  = 'sister_sync_scan_batch';
-	public const GROUP = 'sister-sync';
+	public const HOOK  = 'sceneshifter_scan_batch';
+	public const GROUP = 'sceneshifter';
 
 	/**
 	 * Block-theme content scanned even when not enabled for Check, since the
@@ -33,14 +33,14 @@ final class SiteScanner {
 
 	private const BATCH_SIZE          = 50;
 	private const NEW_FINDINGS_LISTED = 20;
-	private const LOCK_OPTION         = 'sister_sync_scan_lock';
+	private const LOCK_OPTION         = 'sceneshifter_scan_lock';
 	private const LOCK_TTL            = 120;
 
 	/**
 	 * Options never scanned by the extra-options setting: WordPress
 	 * internals, caches, and options other parts of the scan already cover.
 	 */
-	private const SKIPPED_OPTION_PREFIXES = array( '_transient_', '_site_transient_', 'sister_sync_', 'widget_', 'options_', '_options_', 'theme_mods_', 'cron', 'rewrite_rules', 'active_plugins', 'auth_', 'secure_auth_', 'logged_in_', 'nonce_' );
+	private const SKIPPED_OPTION_PREFIXES = array( '_transient_', '_site_transient_', 'sceneshifter_', 'widget_', 'options_', '_options_', 'theme_mods_', 'cron', 'rewrite_rules', 'active_plugins', 'auth_', 'secure_auth_', 'logged_in_', 'nonce_' );
 
 	private const SKIPPED_STATUSES = array( 'trash', 'auto-draft', 'inherit' );
 
@@ -137,7 +137,7 @@ final class SiteScanner {
 
 		try {
 			if ( ! $this->plugin->identity()->isActive() ) {
-				throw new \RuntimeException( __( 'Sister Sync became inactive on this site, so the scan stopped.', 'sister-sync' ) );
+				throw new \RuntimeException( __( 'Sceneshifter became inactive on this site, so the scan stopped.', 'sceneshifter' ) );
 			}
 
 			if ( ScanState::PHASE_POSTS === $state->phase ) {
@@ -176,10 +176,10 @@ final class SiteScanner {
 				 * @param ScanState                  $state       The finished scan.
 				 * @param list<array<string, mixed>> $newFindings Up to 20 findings that weren't in the previous report.
 				 */
-				do_action( 'sister_sync_scan_complete', $state, $completed );
+				do_action( 'sceneshifter_scan_complete', $state, $completed );
 			} catch ( Throwable $e ) {
 				// The scan itself succeeded; a failing listener mustn't change that.
-				error_log( 'Sister Sync: scan complete listener failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'Sceneshifter: scan complete listener failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			}
 		}
 
@@ -214,7 +214,7 @@ final class SiteScanner {
 					$state->id,
 					new ScannedObject(
 						ScannedObject::POST,
-						'' !== $post->post_title ? $post->post_title : __( '(no title)', 'sister-sync' ),
+						'' !== $post->post_title ? $post->post_title : __( '(no title)', 'sceneshifter' ),
 						$id,
 						'',
 						$post->post_type
@@ -245,7 +245,7 @@ final class SiteScanner {
 					continue;
 				}
 				/* translators: %s: menu name. */
-				$label    = sprintf( __( 'Menu "%s"', 'sister-sync' ), $menu->name );
+				$label    = sprintf( __( 'Menu "%s"', 'sceneshifter' ), $menu->name );
 				$findings = $scanner->scanValue( TextChunk::AREA_MENU, $label, (string) $item->url );
 				if ( array() !== $findings ) {
 					$this->store->insert(
@@ -274,7 +274,7 @@ final class SiteScanner {
 					continue;
 				}
 				/* translators: 1: widget type, 2: widget number. */
-				$label    = sprintf( __( 'Widget: %1$s #%2$s', 'sister-sync' ), $type, $number );
+				$label    = sprintf( __( 'Widget: %1$s #%2$s', 'sceneshifter' ), $type, $number );
 				$findings = $scanner->scanValue( TextChunk::AREA_WIDGET, $label, $instance );
 				if ( array() !== $findings ) {
 					$title = isset( $instance['title'] ) && '' !== $instance['title'] ? (string) $instance['title'] : $label;
@@ -311,7 +311,7 @@ final class SiteScanner {
 				continue;
 			}
 			/* translators: %s: theme setting key. */
-			$label    = sprintf( __( 'Theme setting: %s', 'sister-sync' ), $key );
+			$label    = sprintf( __( 'Theme setting: %s', 'sceneshifter' ), $key );
 			$findings = $scanner->scanValue( TextChunk::AREA_THEME_MOD, $label, $value );
 			if ( array() !== $findings ) {
 				$this->store->insert( $scanId, new ScannedObject( ScannedObject::THEME_MOD, $key, 0, $key, get_stylesheet() ), $findings );
@@ -321,7 +321,7 @@ final class SiteScanner {
 
 	/**
 	 * Options named in Check settings (for example a theme's own options
-	 * panel), plus any added through the sister_sync_scan_option_patterns
+	 * panel), plus any added through the sceneshifter_scan_option_patterns
 	 * filter.
 	 */
 	private function scanExtraOptions( string $scanId ): void {
@@ -331,7 +331,7 @@ final class SiteScanner {
 		 *
 		 * @param list<string> $patterns From Check settings, with * turned into %.
 		 */
-		$patterns = (array) apply_filters( 'sister_sync_scan_option_patterns', $this->plugin->options()->checkSettings()->extraOptionLikePatterns() );
+		$patterns = (array) apply_filters( 'sceneshifter_scan_option_patterns', $this->plugin->options()->checkSettings()->extraOptionLikePatterns() );
 		if ( array() === $patterns ) {
 			return;
 		}
@@ -351,7 +351,7 @@ final class SiteScanner {
 				}
 			}
 			/* translators: %s: option name. */
-			$label    = sprintf( __( 'Option: %s', 'sister-sync' ), $name );
+			$label    = sprintf( __( 'Option: %s', 'sceneshifter' ), $name );
 			$findings = $scanner->scanValue( TextChunk::AREA_OPTION, $label, get_option( $name ) );
 			if ( array() !== $findings ) {
 				$this->store->insert( $scanId, new ScannedObject( ScannedObject::OPTION, $name, 0, $name, 'option' ), $findings );

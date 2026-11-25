@@ -7,23 +7,23 @@
  * be changed, and a request meant for one site can't be replayed against
  * another.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 final class SignedRequest {
 
 	public const VERSION = '1';
 
-	public const HEADER_VERSION   = 'X-Sister-Sync-Version';
-	public const HEADER_SENDER    = 'X-Sister-Sync-Sender';
-	public const HEADER_TARGET    = 'X-Sister-Sync-Target';
-	public const HEADER_TIMESTAMP = 'X-Sister-Sync-Timestamp';
-	public const HEADER_NONCE     = 'X-Sister-Sync-Nonce';
-	public const HEADER_SIGNATURE = 'X-Sister-Sync-Signature';
+	public const HEADER_VERSION   = 'X-Sceneshifter-Version';
+	public const HEADER_SENDER    = 'X-Sceneshifter-Sender';
+	public const HEADER_TARGET    = 'X-Sceneshifter-Target';
+	public const HEADER_TIMESTAMP = 'X-Sceneshifter-Timestamp';
+	public const HEADER_NONCE     = 'X-Sceneshifter-Nonce';
+	public const HEADER_SIGNATURE = 'X-Sceneshifter-Signature';
 
 	/**
 	 * The exact text that is signed.
@@ -32,7 +32,7 @@ final class SignedRequest {
 		return implode(
 			"\n",
 			array(
-				'sister-sync-v' . self::VERSION,
+				'sceneshifter-v' . self::VERSION,
 				strtoupper( $method ),
 				$route,
 				$senderId,
@@ -47,7 +47,7 @@ final class SignedRequest {
 	/**
 	 * Headers to send with a request.
 	 *
-	 * @param string   $route    REST route, for example /sister-sync/v1/import.
+	 * @param string   $route    REST route, for example /sceneshifter/v1/import.
 	 * @param int|null $now      Current time; for tests.
 	 * @param string   $nonce    Random value; generated when empty.
 	 * @return array<string, string>

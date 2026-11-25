@@ -3,15 +3,15 @@
  * This site's Check settings. Unlike the site list, these belong to one
  * site: live usually blocks publishing, staging usually doesn't.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Store;
+namespace RedC\Sceneshifter\Store;
 
-use RedC\SisterSync\Registry\Site;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Registry\Site;
+use RedC\Sceneshifter\Scanner\Finding;
 
 final class CheckSettings {
 

@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Admin\PairingTab;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\KeyVault;
-use RedC\SisterSync\Crypto\MemoryNonceStore;
-use RedC\SisterSync\Crypto\PairingCode;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Pairing\Handshake;
-use RedC\SisterSync\Pairing\PairingException;
-use RedC\SisterSync\Pairing\PairingStore;
-use RedC\SisterSync\Pairing\PendingCodes;
-use RedC\SisterSync\Pairing\SecretMaterial;
-use RedC\SisterSync\Pairing\Sisters;
-use RedC\SisterSync\Pairing\SiteKeys;
-use RedC\SisterSync\Store\MemoryKeyValueStore;
-use RedC\SisterSync\Transport\TransportResult;
+use RedC\Sceneshifter\Admin\PairingTab;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\KeyVault;
+use RedC\Sceneshifter\Crypto\MemoryNonceStore;
+use RedC\Sceneshifter\Crypto\PairingCode;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Pairing\Handshake;
+use RedC\Sceneshifter\Pairing\PairingException;
+use RedC\Sceneshifter\Pairing\PairingStore;
+use RedC\Sceneshifter\Pairing\PendingCodes;
+use RedC\Sceneshifter\Pairing\SecretMaterial;
+use RedC\Sceneshifter\Pairing\Sisters;
+use RedC\Sceneshifter\Pairing\SiteKeys;
+use RedC\Sceneshifter\Store\MemoryKeyValueStore;
+use RedC\Sceneshifter\Transport\TransportResult;
 
 final class PairingTest extends TestCase {
 
@@ -55,7 +55,7 @@ final class PairingTest extends TestCase {
 		// Only the pasting site made a call, and it went to staging.
 		$this->assertCount( 1, $dev->sent );
 		$this->assertSame( array(), $staging->sent );
-		$this->assertSame( 'https://staging.client.co.uk/wp-json/sister-sync/v1/pair', $dev->sent[0]['url'] );
+		$this->assertSame( 'https://staging.client.co.uk/wp-json/sceneshifter/v1/pair', $dev->sent[0]['url'] );
 
 		// What dev sent: its ID, its public key, its salt fingerprint and the token. Never the salts.
 		$payload = json_decode( $dev->sent[0]['body'], true );
@@ -372,7 +372,7 @@ final class PairingTest extends TestCase {
 	/**
 	 * Builds a correctly signed POST /pair from a sister and hands it to the handshake.
 	 */
-	private function acceptFrom( Handshake $handshake, KeyPair $keys, string $siteId, PairingCode $code, string $salts, int $now ): ?\RedC\SisterSync\Pairing\Pairing {
+	private function acceptFrom( Handshake $handshake, KeyPair $keys, string $siteId, PairingCode $code, string $salts, int $now ): ?\RedC\Sceneshifter\Pairing\Pairing {
 		$body    = (string) json_encode(
 			array(
 				'site'  => $siteId,

@@ -4,19 +4,19 @@
  * each token is kept. One code per sister at a time: a new code replaces
  * the last one.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
-use RedC\SisterSync\Crypto\PairingCode;
-use RedC\SisterSync\Store\KeyValueStore;
+use RedC\Sceneshifter\Crypto\PairingCode;
+use RedC\Sceneshifter\Store\KeyValueStore;
 
 final class PendingCodes {
 
-	public const OPTION = 'sister_sync_pairing_codes';
+	public const OPTION = 'sceneshifter_pairing_codes';
 
 	public function __construct( private readonly KeyValueStore $store ) {}
 

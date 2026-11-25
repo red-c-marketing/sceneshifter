@@ -2,12 +2,12 @@
 /**
  * One change the rewriter made, for the preview and the audit log.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Rewrite;
+namespace RedC\Sceneshifter\Rewrite;
 
 final class Rewrite {
 

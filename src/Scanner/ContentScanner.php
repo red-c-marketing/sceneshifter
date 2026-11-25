@@ -3,14 +3,14 @@
  * Finds every reference to a sister site in one post's content, excerpt and
  * meta (which includes all ACF fields, since ACF stores them as post meta).
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
-use RedC\SisterSync\Url\UrlClassifier;
+use RedC\Sceneshifter\Url\UrlClassifier;
 
 final class ContentScanner {
 
@@ -35,7 +35,7 @@ final class ContentScanner {
 	/**
 	 * Meta key prefixes to skip: oEmbed caches and our own data.
 	 */
-	public const DEFAULT_META_EXCLUDE_PREFIXES = array( '_oembed_', '_sistersync_' );
+	public const DEFAULT_META_EXCLUDE_PREFIXES = array( '_oembed_', '_sceneshifter_' );
 
 	private UrlExtractor $extractor;
 	private BlockWalker $walker;

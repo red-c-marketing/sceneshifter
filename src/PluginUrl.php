@@ -2,12 +2,12 @@
 /**
  * Works out the plugin's URL when it is a symlinked must-use plugin.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync;
+namespace RedC\Sceneshifter;
 
 final class PluginUrl {
 
@@ -17,7 +17,7 @@ final class PluginUrl {
 	 * URL out itself.
 	 *
 	 * PHP reports a symlinked file at the link's target, for example
-	 * /Volumes/Development/sister-sync, and WordPress can't turn that into a
+	 * /Volumes/Development/sceneshifter, and WordPress can't turn that into a
 	 * URL. It maps symlinked normal plugins back to their link, but not
 	 * must-use ones, so this finds the link and builds the URL from it.
 	 *

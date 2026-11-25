@@ -14,24 +14,24 @@
  *    stores B's key and answers, signed with its own key.
  * 4. B checks the answer against the key in the code and stores A's key.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
 use InvalidArgumentException;
 use JsonException;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\NonceStore;
-use RedC\SisterSync\Crypto\PairingCode;
-use RedC\SisterSync\Crypto\RequestVerifier;
-use RedC\SisterSync\Registry\Registry;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\NonceStore;
+use RedC\Sceneshifter\Crypto\PairingCode;
+use RedC\Sceneshifter\Crypto\RequestVerifier;
+use RedC\Sceneshifter\Registry\Registry;
 
 final class Handshake {
 
-	public const ROUTE = '/sister-sync/v1/pair';
+	public const ROUTE = '/sceneshifter/v1/pair';
 
 	/** Pseudo sender under which used tokens go in the nonce store. Can't clash with a site ID. */
 	public const TOKEN_SENDER = '#pair';
@@ -56,14 +56,14 @@ final class Handshake {
 	public function createCode( string $forSiteId, int $now ): PairingCode {
 		$sister = $forSiteId === $this->selfId ? null : $this->registry->get( $forSiteId );
 		if ( null === $sister ) {
-			throw new PairingException( __( 'Choose another site from the list to pair with.', 'sister-sync' ) );
+			throw new PairingException( __( 'Choose another site from the list to pair with.', 'sceneshifter' ) );
 		}
 		$self = $this->registry->get( $this->selfId );
 		if ( null !== $self && ! $self->isPublic ) {
 			throw new PairingException(
 				sprintf(
 					/* translators: %s: site name. */
-					__( 'This site isn\'t public, so %1$s can\'t contact it to use a code made here. Make the code on %1$s and paste it here instead.', 'sister-sync' ),
+					__( 'This site isn\'t public, so %1$s can\'t contact it to use a code made here. Make the code on %1$s and paste it here instead.', 'sceneshifter' ),
 					$sister->label
 				)
 			);
@@ -86,14 +86,14 @@ final class Handshake {
 		}
 
 		if ( $code->siteId === $this->selfId ) {
-			throw new PairingException( __( 'This code was made on this site. Paste it on the other site instead.', 'sister-sync' ) );
+			throw new PairingException( __( 'This code was made on this site. Paste it on the other site instead.', 'sceneshifter' ) );
 		}
 		$from = $this->registry->get( $code->siteId );
 		if ( null === $from ) {
 			throw new PairingException(
 				sprintf(
 					/* translators: %s: site ID. */
-					__( 'This code comes from a site called "%s", which isn\'t in this site\'s list. Check that both sites have the same list of sites.', 'sister-sync' ),
+					__( 'This code comes from a site called "%s", which isn\'t in this site\'s list. Check that both sites have the same list of sites.', 'sceneshifter' ),
 					$code->siteId
 				)
 			);
@@ -102,7 +102,7 @@ final class Handshake {
 			throw new PairingException(
 				sprintf(
 					/* translators: %s: site name. */
-					__( '%1$s isn\'t public, so this site can\'t contact it to use its code. Make the code on this site instead and paste it on %1$s.', 'sister-sync' ),
+					__( '%1$s isn\'t public, so this site can\'t contact it to use its code. Make the code on this site instead and paste it on %1$s.', 'sceneshifter' ),
 					$from->label
 				)
 			);
@@ -112,7 +112,7 @@ final class Handshake {
 			throw new PairingException(
 				sprintf(
 					/* translators: 1: site name the code was made on, 2: site name it was made for. */
-					__( 'This code was made on %1$s for %2$s, not for this site. Make a new code on %1$s and choose this site.', 'sister-sync' ),
+					__( 'This code was made on %1$s for %2$s, not for this site. Make a new code on %1$s and choose this site.', 'sceneshifter' ),
 					$from->label,
 					null === $for ? $code->forSiteId : $for->label
 				)
@@ -216,10 +216,10 @@ final class Handshake {
 	 */
 	public function complete( PairingCode $code, array $data, int $now ): Pairing {
 		if ( ( $data['site'] ?? null ) !== $code->siteId ) {
-			throw new PairingException( __( 'The other site answered as a different site. Check the addresses in the site list.', 'sister-sync' ) );
+			throw new PairingException( __( 'The other site answered as a different site. Check the addresses in the site list.', 'sceneshifter' ) );
 		}
 		if ( ( $data['peer_fingerprint'] ?? null ) !== KeyPair::fingerprint( $this->keys->publicKey ) ) {
-			throw new PairingException( __( 'The other site received a different key for this site. Something between the two sites may have changed the request. Nothing was stored here.', 'sister-sync' ) );
+			throw new PairingException( __( 'The other site received a different key for this site. Something between the two sites may have changed the request. Nothing was stored here.', 'sceneshifter' ) );
 		}
 		$pairing = new Pairing( $code->siteId, $code->publicKey, $now, $now );
 		$this->pairings->save( $pairing );
@@ -229,7 +229,7 @@ final class Handshake {
 	public static function sameSaltsMessage( string $label ): string {
 		return sprintf(
 			/* translators: %s: site name. */
-			__( 'This site and %s have the same wp-config salts, so a copy of one site\'s database could pretend to be the other. Pairing is refused. Give each environment its own salts (live keeps its own), then try again.', 'sister-sync' ),
+			__( 'This site and %s have the same wp-config salts, so a copy of one site\'s database could pretend to be the other. Pairing is refused. Give each environment its own salts (live keeps its own), then try again.', 'sceneshifter' ),
 			$label
 		);
 	}

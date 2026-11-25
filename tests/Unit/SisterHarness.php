@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
-use RedC\SisterSync\Crypto\MemoryNonceStore;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Crypto\SignedResponse;
-use RedC\SisterSync\Pairing\Handshake;
-use RedC\SisterSync\Pairing\Sisters;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Store\MemoryKeyValueStore;
+use RedC\Sceneshifter\Crypto\MemoryNonceStore;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Crypto\SignedResponse;
+use RedC\Sceneshifter\Pairing\Handshake;
+use RedC\Sceneshifter\Pairing\Sisters;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Store\MemoryKeyValueStore;
 
 /**
  * A pretend site: its own stores and salts, a Sisters instance, and a fake
@@ -118,7 +118,7 @@ final class SisterHarness {
 		$sig  = null === $keys ? '' : SignedResponse::sign( $keys, $sender, $this->siteId, $headers[ SignedRequest::HEADER_NONCE ] ?? '', 200, $body );
 		return array(
 			'status'  => 200,
-			'headers' => array( 'x-sister-sync-response-signature' => $sig ),
+			'headers' => array( 'x-sceneshifter-response-signature' => $sig ),
 			'body'    => $body,
 		);
 	}

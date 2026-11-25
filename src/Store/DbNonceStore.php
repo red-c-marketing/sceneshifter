@@ -4,14 +4,14 @@
  * against any PHP process on this site. The table uses this site's table
  * prefix, so each subsite of a multisite has its own.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Store;
+namespace RedC\Sceneshifter\Store;
 
-use RedC\SisterSync\Crypto\NonceStore;
+use RedC\Sceneshifter\Crypto\NonceStore;
 
 final class DbNonceStore implements NonceStore {
 
@@ -42,7 +42,7 @@ final class DbNonceStore implements NonceStore {
 
 	public static function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'sistersync_nonces';
+		return $wpdb->prefix . 'sceneshifter_nonces';
 	}
 
 	public static function forSite(): self {

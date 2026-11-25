@@ -2,12 +2,12 @@
 /**
  * What would change if an incoming registry replaced this site's.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Registry;
+namespace RedC\Sceneshifter\Registry;
 
 final class RegistryDiff {
 

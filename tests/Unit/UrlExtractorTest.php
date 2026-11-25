@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Scanner\UrlExtractor;
+use RedC\Sceneshifter\Scanner\UrlExtractor;
 
 final class UrlExtractorTest extends TestCase {
 

@@ -3,12 +3,12 @@
  * Turns a raw URL string into a NormalisedUrl, or null if it is not an
  * http(s) URL we can classify.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Url;
+namespace RedC\Sceneshifter\Url;
 
 final class UrlNormaliser {
 

@@ -1,5 +1,5 @@
 /**
- * Sister Sync settings: add and remove site rows, keep badge colours in step
+ * Sceneshifter settings: add and remove site rows, keep badge colours in step
  * with roles, stop sending while there are unsaved changes, hand a received
  * site list to the review screen, and the Pairing tab's small helpers.
  */
@@ -7,9 +7,9 @@
 	'use strict';
 
 	function initSites() {
-		var form = document.getElementById( 'sister-sync-settings-form' );
-		var rows = document.getElementById( 'sister-sync-site-rows' );
-		var template = document.getElementById( 'sister-sync-site-template' );
+		var form = document.getElementById( 'sceneshifter-settings-form' );
+		var rows = document.getElementById( 'sceneshifter-site-rows' );
+		var template = document.getElementById( 'sceneshifter-site-template' );
 		if ( ! form || ! rows || ! template ) {
 			return;
 		}
@@ -31,8 +31,8 @@
 				row.querySelector( 'input[name$="[url]"]' ).value = values.url;
 			}
 			if ( values && values.role ) {
-				row.querySelector( '[data-sister-sync-role]' ).value = values.role;
-				row.querySelector( '[data-sister-sync-colour]' ).value = defaults[ values.role ] || '#787c82';
+				row.querySelector( '[data-sceneshifter-role]' ).value = values.role;
+				row.querySelector( '[data-sceneshifter-colour]' ).value = defaults[ values.role ] || '#787c82';
 			}
 			rows.appendChild( row );
 			row.querySelector( 'input[name$="[label]"]' ).focus();
@@ -40,19 +40,19 @@
 			return row;
 		}
 
-		document.getElementById( 'sister-sync-add-row' ).addEventListener( 'click', function () {
+		document.getElementById( 'sceneshifter-add-row' ).addEventListener( 'click', function () {
 			addRow();
 		} );
 
-		document.querySelectorAll( '[data-sister-sync-add-site]' ).forEach( function ( button ) {
+		document.querySelectorAll( '[data-sceneshifter-add-site]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
-				addRow( { url: button.getAttribute( 'data-sister-sync-add-site' ) } );
+				addRow( { url: button.getAttribute( 'data-sceneshifter-add-site' ) } );
 				button.disabled = true;
 			} );
 		} );
 
 		rows.addEventListener( 'click', function ( event ) {
-			var remove = event.target.closest( '[data-sister-sync-remove]' );
+			var remove = event.target.closest( '[data-sceneshifter-remove]' );
 			if ( ! remove ) {
 				return;
 			}
@@ -65,10 +65,10 @@
 
 		// Follow the role's default colour unless someone picked their own.
 		rows.addEventListener( 'change', function ( event ) {
-			if ( ! event.target.matches( '[data-sister-sync-role]' ) ) {
+			if ( ! event.target.matches( '[data-sceneshifter-role]' ) ) {
 				return;
 			}
-			var colour = event.target.closest( 'tr' ).querySelector( '[data-sister-sync-colour]' );
+			var colour = event.target.closest( 'tr' ).querySelector( '[data-sceneshifter-colour]' );
 			var previous = event.target.getAttribute( 'data-previous' ) || '';
 			if ( colour.value === defaults[ previous ] && defaults[ event.target.value ] ) {
 				colour.value = defaults[ event.target.value ];
@@ -76,7 +76,7 @@
 			event.target.setAttribute( 'data-previous', event.target.value );
 		} );
 		rows.addEventListener( 'focusin', function ( event ) {
-			if ( event.target.matches( '[data-sister-sync-role]' ) ) {
+			if ( event.target.matches( '[data-sceneshifter-role]' ) ) {
 				event.target.setAttribute( 'data-previous', event.target.value );
 			}
 		} );
@@ -87,11 +87,11 @@
 				return;
 			}
 			dirty = true;
-			var notice = document.querySelector( '.sister-sync-unsaved' );
+			var notice = document.querySelector( '.sceneshifter-unsaved' );
 			if ( notice ) {
 				notice.hidden = false;
 			}
-			document.querySelectorAll( '[data-sister-sync-send]' ).forEach( function ( link ) {
+			document.querySelectorAll( '[data-sceneshifter-send]' ).forEach( function ( link ) {
 				link.classList.add( 'disabled' );
 				link.setAttribute( 'aria-disabled', 'true' );
 			} );
@@ -103,7 +103,7 @@
 		} );
 
 		document.addEventListener( 'click', function ( event ) {
-			var link = event.target.closest( '[data-sister-sync-send]' );
+			var link = event.target.closest( '[data-sceneshifter-send]' );
 			if ( link && dirty ) {
 				event.preventDefault();
 			}
@@ -117,14 +117,14 @@
 	}
 
 	function initReceive() {
-		var form = document.getElementById( 'sister-sync-receive-form' );
+		var form = document.getElementById( 'sceneshifter-receive-form' );
 		if ( ! form ) {
 			return;
 		}
 		var bundle = window.location.hash.replace( /^#/, '' );
 		if ( ! bundle ) {
-			document.querySelector( '.sister-sync-receiving' ).hidden = true;
-			document.querySelector( '.sister-sync-nothing' ).hidden = false;
+			document.querySelector( '.sceneshifter-receiving' ).hidden = true;
+			document.querySelector( '.sceneshifter-nothing' ).hidden = false;
 			return;
 		}
 		// Drop the list from the address bar and history before posting it.
@@ -136,17 +136,17 @@
 	// Pairing tab: confirm destructive buttons, copy the code, jump to the
 	// paste box, and say when the other site has used the code.
 	function initPairing() {
-		document.querySelectorAll( 'form[data-sister-sync-confirm]' ).forEach( function ( form ) {
+		document.querySelectorAll( 'form[data-sceneshifter-confirm]' ).forEach( function ( form ) {
 			form.addEventListener( 'submit', function ( event ) {
-				if ( ! window.confirm( form.getAttribute( 'data-sister-sync-confirm' ) ) ) {
+				if ( ! window.confirm( form.getAttribute( 'data-sceneshifter-confirm' ) ) ) {
 					event.preventDefault();
 				}
 			} );
 		} );
 
-		document.querySelectorAll( '[data-sister-sync-copy]' ).forEach( function ( button ) {
+		document.querySelectorAll( '[data-sceneshifter-copy]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
-				var field = document.getElementById( button.getAttribute( 'data-sister-sync-copy' ) );
+				var field = document.getElementById( button.getAttribute( 'data-sceneshifter-copy' ) );
 				if ( ! field ) {
 					return;
 				}
@@ -170,9 +170,9 @@
 			} );
 		} );
 
-		document.querySelectorAll( '[data-sister-sync-paste]' ).forEach( function ( link ) {
+		document.querySelectorAll( '[data-sceneshifter-paste]' ).forEach( function ( link ) {
 			link.addEventListener( 'click', function () {
-				var field = document.getElementById( 'sister-sync-code' );
+				var field = document.getElementById( 'sceneshifter-code' );
 				if ( field ) {
 					window.setTimeout( function () {
 						field.focus();
@@ -181,7 +181,7 @@
 			} );
 		} );
 
-		var wait = document.querySelector( '[data-sister-sync-pairing-wait]' );
+		var wait = document.querySelector( '[data-sceneshifter-pairing-wait]' );
 		if ( ! wait || ! window.fetch ) {
 			return;
 		}

@@ -2,15 +2,15 @@
 /**
  * The findings table on the Sister references report.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Scanner\Finding;
 
 if ( ! class_exists( '\WP_List_Table' ) ) {
 	require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
@@ -45,12 +45,12 @@ final class ReportTable extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'item'     => __( 'Item', 'sister-sync' ),
-			'severity' => __( 'Severity', 'sister-sync' ),
-			'sister'   => __( 'Points to', 'sister-sync' ),
-			'url'      => __( 'URL', 'sister-sync' ),
-			'location' => __( 'Where', 'sister-sync' ),
-			'hits'     => __( 'Times', 'sister-sync' ),
+			'item'     => __( 'Item', 'sceneshifter' ),
+			'severity' => __( 'Severity', 'sceneshifter' ),
+			'sister'   => __( 'Points to', 'sceneshifter' ),
+			'url'      => __( 'URL', 'sceneshifter' ),
+			'location' => __( 'Where', 'sceneshifter' ),
+			'hits'     => __( 'Times', 'sceneshifter' ),
 		);
 	}
 
@@ -79,7 +79,7 @@ final class ReportTable extends \WP_List_Table {
 	}
 
 	public function no_items(): void {
-		esc_html_e( 'No sister links found.', 'sister-sync' );
+		esc_html_e( 'No sister links found.', 'sceneshifter' );
 	}
 
 	/**
@@ -93,32 +93,32 @@ final class ReportTable extends \WP_List_Table {
 		}
 		?>
 		<div class="alignleft actions">
-			<label class="screen-reader-text" for="sister-sync-filter-sister"><?php esc_html_e( 'Filter by sister site', 'sister-sync' ); ?></label>
-			<select name="sister" id="sister-sync-filter-sister">
-				<option value=""><?php esc_html_e( 'All sister sites', 'sister-sync' ); ?></option>
+			<label class="screen-reader-text" for="sceneshifter-filter-sister"><?php esc_html_e( 'Filter by sister site', 'sceneshifter' ); ?></label>
+			<select name="sister" id="sceneshifter-filter-sister">
+				<option value=""><?php esc_html_e( 'All sister sites', 'sceneshifter' ); ?></option>
 				<?php foreach ( $this->store->distinctSisters( $this->scanId ) as $id ) : ?>
 					<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $this->filters->sister, $id ); ?>><?php echo esc_html( $this->registry->get( $id )->label ?? $id ); ?></option>
 				<?php endforeach; ?>
 			</select>
 
-			<label class="screen-reader-text" for="sister-sync-filter-severity"><?php esc_html_e( 'Filter by severity', 'sister-sync' ); ?></label>
-			<select name="severity" id="sister-sync-filter-severity">
-				<option value=""><?php esc_html_e( 'All severities', 'sister-sync' ); ?></option>
-				<option value="<?php echo esc_attr( Finding::ERROR ); ?>" <?php selected( $this->filters->severity, Finding::ERROR ); ?>><?php esc_html_e( 'Errors', 'sister-sync' ); ?></option>
-				<option value="<?php echo esc_attr( Finding::WARNING ); ?>" <?php selected( $this->filters->severity, Finding::WARNING ); ?>><?php esc_html_e( 'Warnings', 'sister-sync' ); ?></option>
+			<label class="screen-reader-text" for="sceneshifter-filter-severity"><?php esc_html_e( 'Filter by severity', 'sceneshifter' ); ?></label>
+			<select name="severity" id="sceneshifter-filter-severity">
+				<option value=""><?php esc_html_e( 'All severities', 'sceneshifter' ); ?></option>
+				<option value="<?php echo esc_attr( Finding::ERROR ); ?>" <?php selected( $this->filters->severity, Finding::ERROR ); ?>><?php esc_html_e( 'Errors', 'sceneshifter' ); ?></option>
+				<option value="<?php echo esc_attr( Finding::WARNING ); ?>" <?php selected( $this->filters->severity, Finding::WARNING ); ?>><?php esc_html_e( 'Warnings', 'sceneshifter' ); ?></option>
 			</select>
 
-			<label class="screen-reader-text" for="sister-sync-filter-type"><?php esc_html_e( 'Filter by type', 'sister-sync' ); ?></label>
-			<select name="type" id="sister-sync-filter-type">
-				<option value=""><?php esc_html_e( 'All types', 'sister-sync' ); ?></option>
+			<label class="screen-reader-text" for="sceneshifter-filter-type"><?php esc_html_e( 'Filter by type', 'sceneshifter' ); ?></label>
+			<select name="type" id="sceneshifter-filter-type">
+				<option value=""><?php esc_html_e( 'All types', 'sceneshifter' ); ?></option>
 				<?php foreach ( $this->typeOptions() as $value => $label ) : ?>
 					<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $this->filters->type, $value ); ?>><?php echo esc_html( $label ); ?></option>
 				<?php endforeach; ?>
 			</select>
 
-			<?php submit_button( __( 'Filter', 'sister-sync' ), '', 'filter_action', false ); ?>
+			<?php submit_button( __( 'Filter', 'sceneshifter' ), '', 'filter_action', false ); ?>
 
-			<a class="button" href="<?php echo esc_url( ReportPage::exportUrl( $this->filters ) ); ?>"><?php esc_html_e( 'Export CSV', 'sister-sync' ); ?></a>
+			<a class="button" href="<?php echo esc_url( ReportPage::exportUrl( $this->filters ) ); ?>"><?php esc_html_e( 'Export CSV', 'sceneshifter' ); ?></a>
 		</div>
 		<?php
 	}
@@ -144,7 +144,7 @@ final class ReportTable extends \WP_List_Table {
 		return sprintf(
 			'<span style="color:%1$s;font-weight:600;">%2$s</span>',
 			$isError ? '#d63638' : '#996800',
-			esc_html( $isError ? __( 'Error', 'sister-sync' ) : __( 'Warning', 'sister-sync' ) )
+			esc_html( $isError ? __( 'Error', 'sceneshifter' ) : __( 'Warning', 'sceneshifter' ) )
 		);
 	}
 
@@ -199,11 +199,11 @@ final class ReportTable extends \WP_List_Table {
 		return match ( (string) $item['object_type'] ) {
 			ScannedObject::POST      => self::postTypeLabel( $subtype ),
 			/* translators: %s: menu name. */
-			ScannedObject::MENU_ITEM => sprintf( __( 'Menu item in "%s"', 'sister-sync' ), $this->menuName( $subtype ) ),
+			ScannedObject::MENU_ITEM => sprintf( __( 'Menu item in "%s"', 'sceneshifter' ), $this->menuName( $subtype ) ),
 			/* translators: %s: widget type. */
-			ScannedObject::WIDGET    => sprintf( __( 'Widget (%s)', 'sister-sync' ), $subtype ),
-			ScannedObject::OPTION    => 'acf' === $subtype ? __( 'ACF options page', 'sister-sync' ) : __( 'Site option', 'sister-sync' ),
-			ScannedObject::THEME_MOD => __( 'Theme setting', 'sister-sync' ),
+			ScannedObject::WIDGET    => sprintf( __( 'Widget (%s)', 'sceneshifter' ), $subtype ),
+			ScannedObject::OPTION    => 'acf' === $subtype ? __( 'ACF options page', 'sceneshifter' ) : __( 'Site option', 'sceneshifter' ),
+			ScannedObject::THEME_MOD => __( 'Theme setting', 'sceneshifter' ),
 			default                  => (string) $item['object_type'],
 		};
 	}
@@ -226,8 +226,8 @@ final class ReportTable extends \WP_List_Table {
 			}
 		}
 		// Menu items and widgets have one entry per menu or widget type; collapse them.
-		$options[ ScannedObject::MENU_ITEM ] = isset( $options[ ScannedObject::MENU_ITEM ] ) ? __( 'Menu items', 'sister-sync' ) : null;
-		$options[ ScannedObject::WIDGET ]    = isset( $options[ ScannedObject::WIDGET ] ) ? __( 'Widgets', 'sister-sync' ) : null;
+		$options[ ScannedObject::MENU_ITEM ] = isset( $options[ ScannedObject::MENU_ITEM ] ) ? __( 'Menu items', 'sceneshifter' ) : null;
+		$options[ ScannedObject::WIDGET ]    = isset( $options[ ScannedObject::WIDGET ] ) ? __( 'Widgets', 'sceneshifter' ) : null;
 		return array_filter( $options );
 	}
 

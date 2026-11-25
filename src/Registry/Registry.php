@@ -2,16 +2,16 @@
 /**
  * The list of every environment of a client site. Identical on every site.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Registry;
+namespace RedC\Sceneshifter\Registry;
 
 use InvalidArgumentException;
-use RedC\SisterSync\Url\NormalisedUrl;
-use RedC\SisterSync\Url\UrlNormaliser;
+use RedC\Sceneshifter\Url\NormalisedUrl;
+use RedC\Sceneshifter\Url\UrlNormaliser;
 
 final class Registry {
 

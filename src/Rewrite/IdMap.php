@@ -3,12 +3,12 @@
  * Source-to-target IDs for attachments and posts, as worked out by the
  * resolver (sync map UUIDs, then path, hash or slug).
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Rewrite;
+namespace RedC\Sceneshifter\Rewrite;
 
 final class IdMap {
 

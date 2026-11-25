@@ -1,21 +1,21 @@
 <?php
 /**
- * Sister Sync → Check: results for one or more posts, reached from the list
+ * Sceneshifter → Check: results for one or more posts, reached from the list
  * view row action and bulk action.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Check;
+namespace RedC\Sceneshifter\Check;
 
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
 
 final class CheckPage {
 
-	public const SLUG = 'sister-sync';
+	public const SLUG = 'sceneshifter';
 
 	/**
 	 * Upper limit on posts checked in one page load.
@@ -30,8 +30,8 @@ final class CheckPage {
 
 	public function addMenu(): void {
 		add_menu_page(
-			__( 'Sister Sync', 'sister-sync' ),
-			__( 'Sister Sync', 'sister-sync' ),
+			__( 'Sceneshifter', 'sceneshifter' ),
+			__( 'Sceneshifter', 'sceneshifter' ),
 			'edit_posts',
 			self::SLUG,
 			array( $this, 'render' ),
@@ -40,8 +40,8 @@ final class CheckPage {
 		);
 		add_submenu_page(
 			self::SLUG,
-			__( 'Check sister links', 'sister-sync' ),
-			__( 'Check', 'sister-sync' ),
+			__( 'Check sister links', 'sceneshifter' ),
+			__( 'Check', 'sceneshifter' ),
 			'edit_posts',
 			self::SLUG,
 			array( $this, 'render' )
@@ -69,12 +69,12 @@ final class CheckPage {
 		$site = $this->plugin->identity()->site;
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Check sister links', 'sister-sync' ); ?></h1>
+			<h1><?php esc_html_e( 'Check sister links', 'sceneshifter' ); ?></h1>
 			<p>
 				<?php
 				printf(
 					/* translators: %s: environment label. */
-					esc_html__( 'You are on %s. Links listed here point at another environment of this site.', 'sister-sync' ),
+					esc_html__( 'You are on %s. Links listed here point at another environment of this site.', 'sceneshifter' ),
 					'<strong>' . esc_html( (string) $site?->label ) . '</strong>'
 				);
 				?>
@@ -117,7 +117,7 @@ final class CheckPage {
 			);
 		}
 		?>
-		<p><?php esc_html_e( 'To check particular posts, open one of the lists below. Use "Check sister links" under a post\'s title, or tick several and choose "Check sister links" from Bulk actions. The results appear on this page.', 'sister-sync' ); ?></p>
+		<p><?php esc_html_e( 'To check particular posts, open one of the lists below. Use "Check sister links" under a post\'s title, or tick several and choose "Check sister links" from Bulk actions. The results appear on this page.', 'sceneshifter' ); ?></p>
 		<?php if ( array() !== $links ) : ?>
 			<ul class="ul-disc">
 				<?php foreach ( $links as $link ) : ?>
@@ -125,20 +125,20 @@ final class CheckPage {
 				<?php endforeach; ?>
 			</ul>
 		<?php else : ?>
-			<p><em><?php esc_html_e( 'No content types are enabled for checking. An administrator can choose them in Sister Sync → Settings → Check.', 'sister-sync' ); ?></em></p>
+			<p><em><?php esc_html_e( 'No content types are enabled for checking. An administrator can choose them in Sceneshifter → Settings → Check.', 'sceneshifter' ); ?></em></p>
 		<?php endif; ?>
 		<?php if ( current_user_can( 'manage_options' ) ) : ?>
 			<p>
 				<?php
 				printf(
 					/* translators: %s: link to the report page. */
-					esc_html__( 'To check the whole site at once, including menus, widgets, ACF options and synced patterns, use the %s.', 'sister-sync' ),
-					'<a href="' . esc_url( \RedC\SisterSync\SiteScan\ReportPage::url() ) . '">' . esc_html__( 'Report', 'sister-sync' ) . '</a>'
+					esc_html__( 'To check the whole site at once, including menus, widgets, ACF options and synced patterns, use the %s.', 'sceneshifter' ),
+					'<a href="' . esc_url( \RedC\Sceneshifter\SiteScan\ReportPage::url() ) . '">' . esc_html__( 'Report', 'sceneshifter' ) . '</a>'
 				);
 				?>
 			</p>
 		<?php endif; ?>
-		<p><?php esc_html_e( 'The editor also checks each post as you write, in the Sister Sync panel.', 'sister-sync' ); ?></p>
+		<p><?php esc_html_e( 'The editor also checks each post as you write, in the Sceneshifter panel.', 'sceneshifter' ); ?></p>
 		<?php
 	}
 
@@ -149,15 +149,15 @@ final class CheckPage {
 		$counts = RestController::counts( $findings );
 		?>
 		<h2 style="margin-top:2em;">
-			<a href="<?php echo esc_url( (string) get_edit_post_link( $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ?: __( '(no title)', 'sister-sync' ) ); ?></a>
+			<a href="<?php echo esc_url( (string) get_edit_post_link( $post->ID ) ); ?>"><?php echo esc_html( get_the_title( $post ) ?: __( '(no title)', 'sceneshifter' ) ); ?></a>
 			<span style="font-weight:normal;font-size:13px;">
 				<?php
 				if ( array() === $findings ) {
-					esc_html_e( 'No sister links found.', 'sister-sync' );
+					esc_html_e( 'No sister links found.', 'sceneshifter' );
 				} else {
 					printf(
 						/* translators: 1: number of errors, 2: number of warnings. */
-						esc_html__( '%1$d errors, %2$d warnings', 'sister-sync' ),
+						esc_html__( '%1$d errors, %2$d warnings', 'sceneshifter' ),
 						(int) $counts[ Finding::ERROR ],
 						(int) $counts[ Finding::WARNING ]
 					);
@@ -169,17 +169,17 @@ final class CheckPage {
 			<table class="widefat striped">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Severity', 'sister-sync' ); ?></th>
-						<th><?php esc_html_e( 'Points to', 'sister-sync' ); ?></th>
-						<th><?php esc_html_e( 'URL', 'sister-sync' ); ?></th>
-						<th><?php esc_html_e( 'Where', 'sister-sync' ); ?></th>
-						<th><?php esc_html_e( 'Times', 'sister-sync' ); ?></th>
+						<th><?php esc_html_e( 'Severity', 'sceneshifter' ); ?></th>
+						<th><?php esc_html_e( 'Points to', 'sceneshifter' ); ?></th>
+						<th><?php esc_html_e( 'URL', 'sceneshifter' ); ?></th>
+						<th><?php esc_html_e( 'Where', 'sceneshifter' ); ?></th>
+						<th><?php esc_html_e( 'Times', 'sceneshifter' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php foreach ( $findings as $finding ) : ?>
 						<tr>
-							<td><?php echo esc_html( Finding::ERROR === $finding->severity ? __( 'Error', 'sister-sync' ) : __( 'Warning', 'sister-sync' ) ); ?></td>
+							<td><?php echo esc_html( Finding::ERROR === $finding->severity ? __( 'Error', 'sceneshifter' ) : __( 'Warning', 'sceneshifter' ) ); ?></td>
 							<td><span style="background:<?php echo esc_attr( $finding->sister->colour() ); ?>;color:#fff;padding:1px 6px;border-radius:3px;"><?php echo esc_html( $finding->sister->label ); ?></span></td>
 							<td><code style="word-break:break-all;"><?php echo esc_html( $finding->url ); ?></code></td>
 							<td><?php echo esc_html( $finding->locationText() ); ?></td>

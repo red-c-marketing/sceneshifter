@@ -8,12 +8,12 @@
  * It works on the parsed structure and hands it back for serialize_blocks(),
  * so nothing is ever found-and-replaced across the serialised post.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Rewrite;
+namespace RedC\Sceneshifter\Rewrite;
 
 final class BlockRewriter {
 

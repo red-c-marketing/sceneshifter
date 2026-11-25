@@ -3,14 +3,14 @@
  * The Check meta box for the Classic editor. Hidden in the block editor,
  * where the sidebar panel takes over.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Check;
+namespace RedC\Sceneshifter\Check;
 
-use RedC\SisterSync\Plugin;
+use RedC\Sceneshifter\Plugin;
 use WP_Post;
 
 final class ClassicMetaBox {
@@ -27,8 +27,8 @@ final class ClassicMetaBox {
 			return;
 		}
 		add_meta_box(
-			'sister-sync-check',
-			__( 'Sister Sync', 'sister-sync' ),
+			'sceneshifter-check',
+			__( 'Sceneshifter', 'sceneshifter' ),
 			array( $this, 'render' ),
 			$postType,
 			'side',
@@ -39,10 +39,10 @@ final class ClassicMetaBox {
 
 	public function render( WP_Post $post ): void {
 		?>
-		<div id="sister-sync-classic" data-post-id="<?php echo (int) $post->ID; ?>">
-			<p><?php esc_html_e( 'Find links and images that point at another environment of this site.', 'sister-sync' ); ?></p>
-			<p><button type="button" class="button" id="sister-sync-classic-check"><?php esc_html_e( 'Check', 'sister-sync' ); ?></button></p>
-			<div id="sister-sync-classic-results" aria-live="polite"></div>
+		<div id="sceneshifter-classic" data-post-id="<?php echo (int) $post->ID; ?>">
+			<p><?php esc_html_e( 'Find links and images that point at another environment of this site.', 'sceneshifter' ); ?></p>
+			<p><button type="button" class="button" id="sceneshifter-classic-check"><?php esc_html_e( 'Check', 'sceneshifter' ); ?></button></p>
+			<div id="sceneshifter-classic-results" aria-live="polite"></div>
 		</div>
 		<?php
 	}
@@ -56,16 +56,16 @@ final class ClassicMetaBox {
 			return;
 		}
 		wp_enqueue_script(
-			'sister-sync-classic',
-			SISTER_SYNC_URL . 'assets/classic-check.js',
+			'sceneshifter-classic',
+			SCENESHIFTER_URL . 'assets/classic-check.js',
 			array( 'wp-api-fetch', 'wp-i18n' ),
 			Plugin::assetVersion( 'assets/classic-check.js' ),
 			true
 		);
-		wp_set_script_translations( 'sister-sync-classic', 'sister-sync' );
+		wp_set_script_translations( 'sceneshifter-classic', 'sceneshifter' );
 		wp_add_inline_script(
-			'sister-sync-classic',
-			'window.sisterSyncClassic = ' . wp_json_encode( array( 'blockPublish' => $this->plugin->options()->checkSettings()->blockPublish ) ) . ';',
+			'sceneshifter-classic',
+			'window.sceneshifterClassic = ' . wp_json_encode( array( 'blockPublish' => $this->plugin->options()->checkSettings()->blockPublish ) ) . ';',
 			'before'
 		);
 	}

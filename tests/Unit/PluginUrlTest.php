@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\PluginUrl;
+use RedC\Sceneshifter\PluginUrl;
 
 final class PluginUrlTest extends TestCase {
 
@@ -17,8 +17,8 @@ final class PluginUrlTest extends TestCase {
 	private string $mu;
 
 	protected function setUp(): void {
-		$this->root    = sys_get_temp_dir() . '/sister-sync-url-' . bin2hex( random_bytes( 4 ) );
-		$this->source  = $this->root . '/Development/Sister Sync';
+		$this->root    = sys_get_temp_dir() . '/sceneshifter-url-' . bin2hex( random_bytes( 4 ) );
+		$this->source  = $this->root . '/Development/Sceneshifter';
 		$this->plugins = $this->root . '/site/plugins';
 		$this->mu      = $this->root . '/site/mu-plugins';
 		foreach ( array( $this->source, $this->plugins, $this->mu ) as $dir ) {
@@ -31,10 +31,10 @@ final class PluginUrlTest extends TestCase {
 	}
 
 	public function test_maps_a_symlinked_must_use_plugin_to_its_link(): void {
-		symlink( $this->source, $this->mu . '/sister-sync' );
+		symlink( $this->source, $this->mu . '/sceneshifter' );
 
 		$this->assertSame(
-			self::MU_URL . '/sister-sync/',
+			self::MU_URL . '/sceneshifter/',
 			PluginUrl::forMustUseSymlink( $this->source, $this->plugins, $this->mu, self::MU_URL . '/' )
 		);
 	}
@@ -47,23 +47,23 @@ final class PluginUrlTest extends TestCase {
 	}
 
 	public function test_leaves_a_copied_must_use_plugin_to_wordpress(): void {
-		mkdir( $this->mu . '/sister-sync' );
+		mkdir( $this->mu . '/sceneshifter' );
 
-		$this->assertNull( PluginUrl::forMustUseSymlink( $this->mu . '/sister-sync', $this->plugins, $this->mu, self::MU_URL ) );
+		$this->assertNull( PluginUrl::forMustUseSymlink( $this->mu . '/sceneshifter', $this->plugins, $this->mu, self::MU_URL ) );
 	}
 
 	public function test_leaves_a_normal_plugin_to_wordpress(): void {
-		mkdir( $this->plugins . '/sister-sync' );
-		symlink( $this->plugins . '/sister-sync', $this->mu . '/sister-sync' );
+		mkdir( $this->plugins . '/sceneshifter' );
+		symlink( $this->plugins . '/sceneshifter', $this->mu . '/sceneshifter' );
 
-		$this->assertNull( PluginUrl::forMustUseSymlink( $this->plugins . '/sister-sync', $this->plugins, $this->mu, self::MU_URL ) );
+		$this->assertNull( PluginUrl::forMustUseSymlink( $this->plugins . '/sceneshifter', $this->plugins, $this->mu, self::MU_URL ) );
 	}
 
 	public function test_encodes_the_link_name(): void {
-		symlink( $this->source, $this->mu . '/sister sync' );
+		symlink( $this->source, $this->mu . '/scene shifter' );
 
 		$this->assertSame(
-			self::MU_URL . '/sister%20sync/',
+			self::MU_URL . '/scene%20shifter/',
 			PluginUrl::forMustUseSymlink( $this->source, $this->plugins, $this->mu, self::MU_URL )
 		);
 	}

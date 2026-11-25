@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Check\PublishGuard;
-use RedC\SisterSync\Scanner\ContentScanner;
-use RedC\SisterSync\Scanner\Finding;
-use RedC\SisterSync\Scanner\ScanInput;
-use RedC\SisterSync\Scanner\SeverityPolicy;
-use RedC\SisterSync\SiteScan\ScheduledScan;
-use RedC\SisterSync\Store\CheckSettings;
-use RedC\SisterSync\Url\UrlClassifier;
+use RedC\Sceneshifter\Check\PublishGuard;
+use RedC\Sceneshifter\Scanner\ContentScanner;
+use RedC\Sceneshifter\Scanner\Finding;
+use RedC\Sceneshifter\Scanner\ScanInput;
+use RedC\Sceneshifter\Scanner\SeverityPolicy;
+use RedC\Sceneshifter\SiteScan\ScheduledScan;
+use RedC\Sceneshifter\Store\CheckSettings;
+use RedC\Sceneshifter\Url\UrlClassifier;
 
 final class CheckSettingsTest extends TestCase {
 
@@ -95,7 +95,7 @@ final class CheckSettingsTest extends TestCase {
 					'location'     => 'Block 2 (core/paragraph)',
 				),
 			),
-			'https://www.client.co.uk/wp-admin/admin.php?page=sister-sync-report',
+			'https://www.client.co.uk/wp-admin/admin.php?page=sceneshifter-report',
 			static fn( string $id ): string => ucfirst( $id )
 		);
 
@@ -104,7 +104,7 @@ final class CheckSettingsTest extends TestCase {
 		$this->assertStringContainsString( '3 of these are new since the last scan:', $message );
 		$this->assertStringContainsString( "- Home [error, Staging]\n  https://staging.client.co.uk/a\n  Block 2 (core/paragraph)", $message );
 		$this->assertStringContainsString( '…and 2 more.', $message );
-		$this->assertStringContainsString( 'page=sister-sync-report', $message );
+		$this->assertStringContainsString( 'page=sceneshifter-report', $message );
 	}
 
 	public function test_publish_blocked_message_counts_every_link(): void {

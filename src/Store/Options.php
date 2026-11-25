@@ -2,24 +2,24 @@
 /**
  * Reads and writes the plugin's options.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Store;
+namespace RedC\Sceneshifter\Store;
 
-use RedC\SisterSync\Registry\Registry;
+use RedC\Sceneshifter\Registry\Registry;
 use Throwable;
 
 final class Options {
 
-	public const REGISTRY   = 'sister_sync_registry';
-	public const POST_TYPES = 'sister_sync_post_types';
-	public const CHECK      = 'sister_sync_check';
+	public const REGISTRY   = 'sceneshifter_registry';
+	public const POST_TYPES = 'sceneshifter_post_types';
+	public const CHECK      = 'sceneshifter_check';
 
 	/** Allow plain HTTP to sisters on .test and .localhost hosts. */
-	public const ALLOW_DEV_HTTP = 'sister_sync_allow_dev_http';
+	public const ALLOW_DEV_HTTP = 'sceneshifter_allow_dev_http';
 
 	public const DEFAULT_POST_TYPES = array( 'post', 'page' );
 

@@ -2,19 +2,19 @@
 /**
  * A registry packaged for sending to a sister site, by link or as a file.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Registry;
+namespace RedC\Sceneshifter\Registry;
 
 use InvalidArgumentException;
 use JsonException;
 
 final class RegistryBundle {
 
-	public const FORMAT         = 'sister-sync-registry';
+	public const FORMAT         = 'sceneshifter-registry';
 	public const FORMAT_VERSION = 1;
 
 	/** Far more than any real registry needs; stops oversized input early. */
@@ -55,28 +55,28 @@ final class RegistryBundle {
 			throw new InvalidArgumentException( 'Nothing was received.' );
 		}
 		if ( strlen( $input ) > self::MAX_BYTES ) {
-			throw new InvalidArgumentException( 'This is too large to be a Sister Sync registry.' );
+			throw new InvalidArgumentException( 'This is too large to be a Sceneshifter registry.' );
 		}
 
 		$json = $input;
 		if ( ! str_starts_with( $input, '{' ) ) {
 			$json = base64_decode( strtr( $input, '-_', '+/' ), true );
 			if ( false === $json ) {
-				throw new InvalidArgumentException( 'This isn\'t a Sister Sync registry. It may have been cut short when it was copied.' );
+				throw new InvalidArgumentException( 'This isn\'t a Sceneshifter registry. It may have been cut short when it was copied.' );
 			}
 		}
 
 		try {
 			$data = json_decode( $json, true, 16, JSON_THROW_ON_ERROR );
 		} catch ( JsonException $e ) {
-			throw new InvalidArgumentException( 'This isn\'t a Sister Sync registry. It may have been cut short when it was copied.' );
+			throw new InvalidArgumentException( 'This isn\'t a Sceneshifter registry. It may have been cut short when it was copied.' );
 		}
 
 		if ( ! is_array( $data ) || self::FORMAT !== ( $data['format'] ?? null ) ) {
-			throw new InvalidArgumentException( 'This isn\'t a Sister Sync registry.' );
+			throw new InvalidArgumentException( 'This isn\'t a Sceneshifter registry.' );
 		}
 		if ( self::FORMAT_VERSION !== ( $data['format_version'] ?? null ) ) {
-			throw new InvalidArgumentException( 'This registry was made by a different version of Sister Sync. Update the plugin on both sites.' );
+			throw new InvalidArgumentException( 'This registry was made by a different version of Sceneshifter. Update the plugin on both sites.' );
 		}
 		if ( ! is_array( $data['registry'] ?? null ) ) {
 			throw new InvalidArgumentException( 'This registry is missing its list of sites.' );

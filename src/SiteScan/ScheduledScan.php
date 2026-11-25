@@ -4,21 +4,21 @@
  *
  * WP-Cron starts the scan; its batches then run like any other scan.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
 use DateTimeImmutable;
-use RedC\SisterSync\Plugin;
-use RedC\SisterSync\Scanner\Finding;
-use RedC\SisterSync\Store\CheckSettings;
+use RedC\Sceneshifter\Plugin;
+use RedC\Sceneshifter\Scanner\Finding;
+use RedC\Sceneshifter\Store\CheckSettings;
 
 final class ScheduledScan {
 
-	public const HOOK = 'sister_sync_scheduled_scan';
+	public const HOOK = 'sceneshifter_scheduled_scan';
 
 	/** Local time scheduled scans start, when the site is quiet. */
 	private const START_TIME = '03:00';
@@ -31,7 +31,7 @@ final class ScheduledScan {
 
 	public function register(): void {
 		add_action( self::HOOK, array( $this, 'run' ) );
-		add_action( 'sister_sync_scan_complete', array( $this, 'notify' ), 10, 2 );
+		add_action( 'sceneshifter_scan_complete', array( $this, 'notify' ), 10, 2 );
 		add_action( 'admin_init', array( $this, 'ensureScheduled' ) );
 	}
 
@@ -103,10 +103,10 @@ final class ScheduledScan {
 
 		$subject = 0 === $state->newFindings
 			/* translators: %s: site name. */
-			? sprintf( __( '[%s] Sister Sync scan: no new links to other environments', 'sister-sync' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) )
+			? sprintf( __( '[%s] Sceneshifter scan: no new links to other environments', 'sceneshifter' ), wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) )
 			: sprintf(
 				/* translators: 1: site name, 2: number of new findings. */
-				_n( '[%1$s] Sister Sync scan: %2$d new link to another environment', '[%1$s] Sister Sync scan: %2$d new links to other environments', $state->newFindings, 'sister-sync' ),
+				_n( '[%1$s] Sceneshifter scan: %2$d new link to another environment', '[%1$s] Sceneshifter scan: %2$d new links to other environments', $state->newFindings, 'sceneshifter' ),
 				wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ),
 				$state->newFindings
 			);
@@ -126,22 +126,22 @@ final class ScheduledScan {
 
 		$lines[] = sprintf(
 			/* translators: 1: site name in the registry, 2: site address. */
-			__( 'Sister Sync has finished its scheduled scan of %1$s (%2$s).', 'sister-sync' ),
+			__( 'Sceneshifter has finished its scheduled scan of %1$s (%2$s).', 'sceneshifter' ),
 			$siteLabel,
 			$homeUrl
 		);
 		$lines[] = '';
 		$lines[] = sprintf(
 			/* translators: 1: number of items, 2: errors, 3: warnings. */
-			__( 'In total, %1$d items link to other environments: %2$d errors and %3$d warnings.', 'sister-sync' ),
+			__( 'In total, %1$d items link to other environments: %2$d errors and %3$d warnings.', 'sceneshifter' ),
 			(int) $summary['objects'],
 			(int) $summary['error'],
 			(int) $summary['warning']
 		);
 		$lines[] = 0 === $newCount
-			? __( 'Nothing new since the last scan.', 'sister-sync' )
+			? __( 'Nothing new since the last scan.', 'sceneshifter' )
 			/* translators: %d: number of new findings. */
-			: sprintf( _n( '%d of these is new since the last scan:', '%d of these are new since the last scan:', $newCount, 'sister-sync' ), $newCount );
+			: sprintf( _n( '%d of these is new since the last scan:', '%d of these are new since the last scan:', $newCount, 'sceneshifter' ), $newCount );
 
 		if ( array() !== $newFindings ) {
 			$lines[] = '';
@@ -149,7 +149,7 @@ final class ScheduledScan {
 				$lines[] = sprintf(
 					'- %1$s [%2$s, %3$s]',
 					(string) $row['object_title'],
-					Finding::ERROR === $row['severity'] ? __( 'error', 'sister-sync' ) : __( 'warning', 'sister-sync' ),
+					Finding::ERROR === $row['severity'] ? __( 'error', 'sceneshifter' ) : __( 'warning', 'sceneshifter' ),
 					$sisterLabel( (string) $row['sister_id'] )
 				);
 				$lines[] = '  ' . (string) $row['url'];
@@ -157,13 +157,13 @@ final class ScheduledScan {
 			}
 			if ( $newCount > count( $newFindings ) ) {
 				/* translators: %d: number of findings not listed. */
-				$lines[] = sprintf( __( '…and %d more.', 'sister-sync' ), $newCount - count( $newFindings ) );
+				$lines[] = sprintf( __( '…and %d more.', 'sceneshifter' ), $newCount - count( $newFindings ) );
 			}
 		}
 
 		$lines[] = '';
 		/* translators: %s: report page address. */
-		$lines[] = sprintf( __( 'See the full report: %s', 'sister-sync' ), $reportUrl );
+		$lines[] = sprintf( __( 'See the full report: %s', 'sceneshifter' ), $reportUrl );
 
 		return implode( "\n", $lines ) . "\n";
 	}

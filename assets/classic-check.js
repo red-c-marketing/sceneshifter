@@ -1,5 +1,5 @@
 /**
- * Sister Sync Check for the Classic editor. No build step: plain script using
+ * Sceneshifter Check for the Classic editor. No build step: plain script using
  * the wp.apiFetch and wp.i18n globals.
  */
 ( function () {
@@ -36,7 +36,7 @@
 		results.replaceChildren();
 
 		if ( ! data.findings.length ) {
-			results.appendChild( el( 'p', {}, __( 'No sister links found.', 'sister-sync' ) ) );
+			results.appendChild( el( 'p', {}, __( 'No sister links found.', 'sceneshifter' ) ) );
 			return;
 		}
 
@@ -46,14 +46,14 @@
 				{},
 				sprintf(
 					/* translators: 1: number of errors, 2: number of warnings. */
-					__( '%1$d errors, %2$d warnings', 'sister-sync' ),
+					__( '%1$d errors, %2$d warnings', 'sceneshifter' ),
 					data.counts.error,
 					data.counts.warning
 				)
 			)
 		);
 
-		const list = el( 'ul', { class: 'sister-sync-findings' } );
+		const list = el( 'ul', { class: 'sceneshifter-findings' } );
 		data.findings.forEach( ( finding ) => {
 			const item = el( 'li', {
 				style:
@@ -90,7 +90,7 @@
 
 	function check( root ) {
 		return wp.apiFetch( {
-			path: '/sister-sync/v1/check',
+			path: '/sceneshifter/v1/check',
 			method: 'POST',
 			data: {
 				post_id: parseInt( root.dataset.postId, 10 ),
@@ -113,7 +113,7 @@
 			return;
 		}
 		const blockPublish = Boolean(
-			window.sisterSyncClassic && window.sisterSyncClassic.blockPublish
+			window.sceneshifterClassic && window.sceneshifterClassic.blockPublish
 		);
 		let confirmed = false;
 
@@ -124,7 +124,7 @@
 			}
 			event.preventDefault();
 			publish.disabled = true;
-			results.textContent = __( 'Checking…', 'sister-sync' );
+			results.textContent = __( 'Checking…', 'sceneshifter' );
 
 			check( root )
 				.then( ( data ) => {
@@ -139,8 +139,8 @@
 						root.scrollIntoView( { behavior: 'smooth' } );
 						window.alert(
 							__(
-								'This content links to another environment, and publishing is blocked on this site until it is fixed. The links are listed in the Sister Sync box.',
-								'sister-sync'
+								'This content links to another environment, and publishing is blocked on this site until it is fixed. The links are listed in the Sceneshifter box.',
+								'sceneshifter'
 							)
 						);
 						return;
@@ -148,8 +148,8 @@
 					const message = sprintf(
 						/* translators: 1: number of errors, 2: number of warnings. */
 						__(
-							'Sister Sync found links to other environments (%1$d errors, %2$d warnings). They are listed in the Sister Sync box. Publish anyway?',
-							'sister-sync'
+							'Sceneshifter found links to other environments (%1$d errors, %2$d warnings). They are listed in the Sceneshifter box. Publish anyway?',
+							'sceneshifter'
 						),
 						data.counts.error,
 						data.counts.warning
@@ -165,7 +165,7 @@
 					publish.disabled = false;
 					results.textContent = __(
 						'The check failed, so it was skipped.',
-						'sister-sync'
+						'sceneshifter'
 					);
 					confirmed = true;
 					publish.click();
@@ -174,23 +174,23 @@
 	}
 
 	document.addEventListener( 'DOMContentLoaded', () => {
-		const root = document.getElementById( 'sister-sync-classic' );
-		const button = document.getElementById( 'sister-sync-classic-check' );
-		const results = document.getElementById( 'sister-sync-classic-results' );
+		const root = document.getElementById( 'sceneshifter-classic' );
+		const button = document.getElementById( 'sceneshifter-classic-check' );
+		const results = document.getElementById( 'sceneshifter-classic-results' );
 		if ( ! root || ! button || ! results ) {
 			return;
 		}
 
 		button.addEventListener( 'click', () => {
 			button.disabled = true;
-			results.textContent = __( 'Checking…', 'sister-sync' );
+			results.textContent = __( 'Checking…', 'sceneshifter' );
 
 			check( root )
 				.then( ( data ) => render( results, data ) )
 				.catch( ( error ) => {
 					results.textContent =
 						( error && error.message ) ||
-						__( 'The check failed.', 'sister-sync' );
+						__( 'The check failed.', 'sceneshifter' );
 				} )
 				.finally( () => {
 					button.disabled = false;

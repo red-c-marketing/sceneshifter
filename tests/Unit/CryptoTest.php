@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Tests\Unit;
+namespace RedC\Sceneshifter\Tests\Unit;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\KeyVault;
-use RedC\SisterSync\Crypto\MemoryNonceStore;
-use RedC\SisterSync\Crypto\PairingCode;
-use RedC\SisterSync\Crypto\RequestVerifier;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Crypto\SignedResponse;
-use RedC\SisterSync\Crypto\TransportPolicy;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\KeyVault;
+use RedC\Sceneshifter\Crypto\MemoryNonceStore;
+use RedC\Sceneshifter\Crypto\PairingCode;
+use RedC\Sceneshifter\Crypto\RequestVerifier;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Crypto\SignedResponse;
+use RedC\Sceneshifter\Crypto\TransportPolicy;
 
 final class CryptoTest extends TestCase {
 
 	private const NOW   = 1800000000;
-	private const ROUTE = '/sister-sync/v1/import';
+	private const ROUTE = '/sceneshifter/v1/import';
 	private const BODY  = '{"post":{"title":"Hello"}}';
 
 	private const STAGING_SALTS = 'staging-auth-key-staging-secure-auth-key-staging-logged-in-key';
@@ -72,7 +72,7 @@ final class CryptoTest extends TestCase {
 
 		$cases = array(
 			'body changed'   => array( 'POST', self::ROUTE, $headers, '{"post":{"title":"Evil"}}', RequestVerifier::BAD_SIGNATURE ),
-			'route changed'  => array( 'POST', '/sister-sync/v1/rollback', $headers, self::BODY, RequestVerifier::BAD_SIGNATURE ),
+			'route changed'  => array( 'POST', '/sceneshifter/v1/rollback', $headers, self::BODY, RequestVerifier::BAD_SIGNATURE ),
 			'method changed' => array( 'DELETE', self::ROUTE, $headers, self::BODY, RequestVerifier::BAD_SIGNATURE ),
 			'too old'        => array( 'POST', self::ROUTE, $headers, self::BODY, RequestVerifier::STALE, self::NOW + 301 ),
 			'no signature'   => array( 'POST', self::ROUTE, array_diff_key( $headers, array( SignedRequest::HEADER_SIGNATURE => 1 ) ), self::BODY, RequestVerifier::MISSING_HEADERS ),

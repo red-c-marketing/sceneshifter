@@ -2,12 +2,12 @@
 /**
  * The outcome of one signed request to a sister.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Transport;
+namespace RedC\Sceneshifter\Transport;
 
 final class TransportResult {
 

@@ -2,19 +2,19 @@
 /**
  * "Check sister links" row action and bulk action on enabled list screens.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Check;
+namespace RedC\Sceneshifter\Check;
 
-use RedC\SisterSync\Plugin;
+use RedC\Sceneshifter\Plugin;
 use WP_Post;
 
 final class ListIntegration {
 
-	private const BULK_ACTION = 'sister_sync_check';
+	private const BULK_ACTION = 'sceneshifter_check';
 
 	public function __construct( private readonly Plugin $plugin ) {}
 
@@ -36,7 +36,7 @@ final class ListIntegration {
 	 * @return array<string, string>
 	 */
 	public function addBulkAction( array $actions ): array {
-		$actions[ self::BULK_ACTION ] = __( 'Check sister links', 'sister-sync' );
+		$actions[ self::BULK_ACTION ] = __( 'Check sister links', 'sceneshifter' );
 		return $actions;
 	}
 
@@ -58,10 +58,10 @@ final class ListIntegration {
 		if ( ! $this->plugin->options()->isEnabledPostType( $post->post_type ) || ! current_user_can( 'edit_post', $post->ID ) ) {
 			return $actions;
 		}
-		$actions['sister_sync_check'] = sprintf(
+		$actions['sceneshifter_check'] = sprintf(
 			'<a href="%s">%s</a>',
 			esc_url( CheckPage::url( array( $post->ID ) ) ),
-			esc_html__( 'Check sister links', 'sister-sync' )
+			esc_html__( 'Check sister links', 'sceneshifter' )
 		);
 		return $actions;
 	}

@@ -2,14 +2,14 @@
 /**
  * Filters, search and sort for the report, read from the query string.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\SiteScan;
+namespace RedC\Sceneshifter\SiteScan;
 
-use RedC\SisterSync\Scanner\Finding;
+use RedC\Sceneshifter\Scanner\Finding;
 
 final class ReportFilters {
 

@@ -3,12 +3,12 @@
  * The HTTP function Transport uses on a real site: wp_remote_request,
  * normalised to a plain array so Transport can be tested without WordPress.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Transport;
+namespace RedC\Sceneshifter\Transport;
 
 final class WpHttp {
 
@@ -27,7 +27,7 @@ final class WpHttp {
 				// A redirect would turn a POST into a GET or send a signed
 				// request somewhere else. Report it instead.
 				'redirection' => 0,
-				'user-agent'  => 'Sister Sync/' . SISTER_SYNC_VERSION,
+				'user-agent'  => 'Sceneshifter/' . SCENESHIFTER_VERSION,
 			)
 		);
 		if ( is_wp_error( $response ) ) {

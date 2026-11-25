@@ -5,12 +5,12 @@
  * carries the encrypted key, but that environment has different salts and
  * can't decrypt it, so it can't impersonate the original site.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Crypto;
+namespace RedC\Sceneshifter\Crypto;
 
 use InvalidArgumentException;
 
@@ -27,7 +27,7 @@ final class KeyVault {
 		if ( strlen( $secretMaterial ) < 32 ) {
 			throw new InvalidArgumentException( 'The site\'s secret keys are missing or too short. Set unique salts in wp-config.php.' );
 		}
-		$this->key = sodium_crypto_generichash( 'sister-sync-key-vault|' . $secretMaterial, '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES );
+		$this->key = sodium_crypto_generichash( 'sceneshifter-key-vault|' . $secretMaterial, '', SODIUM_CRYPTO_SECRETBOX_KEYBYTES );
 	}
 
 	/**
@@ -35,7 +35,7 @@ final class KeyVault {
 	 * that share salts (and so could read each other's keys).
 	 */
 	public function saltFingerprint(): string {
-		return substr( bin2hex( sodium_crypto_generichash( 'sister-sync-salt-check|' . $this->key, '', 16 ) ), 0, 16 );
+		return substr( bin2hex( sodium_crypto_generichash( 'sceneshifter-salt-check|' . $this->key, '', 16 ) ), 0, 16 );
 	}
 
 	public function seal( KeyPair $pair ): string {

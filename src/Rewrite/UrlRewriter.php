@@ -8,14 +8,14 @@
  * one meta value), never on serialised data, and keeps the escaping it
  * finds: a URL written with \/ (as in JSON) stays that way.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Rewrite;
+namespace RedC\Sceneshifter\Rewrite;
 
-use RedC\SisterSync\Registry\Site;
+use RedC\Sceneshifter\Registry\Site;
 
 final class UrlRewriter {
 

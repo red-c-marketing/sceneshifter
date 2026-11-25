@@ -3,27 +3,27 @@
  * Ties together this site's keys, its pairings, the handshake and the
  * transport, so screens, REST endpoints and WP-CLI share one set.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Pairing;
+namespace RedC\Sceneshifter\Pairing;
 
-use RedC\SisterSync\Crypto\NonceStore;
-use RedC\SisterSync\Crypto\PairingCode;
-use RedC\SisterSync\Crypto\TransportPolicy;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Registry\Site;
-use RedC\SisterSync\Store\KeyValueStore;
-use RedC\SisterSync\Transport\Gate;
-use RedC\SisterSync\Transport\Transport;
-use RedC\SisterSync\Transport\TransportResult;
+use RedC\Sceneshifter\Crypto\NonceStore;
+use RedC\Sceneshifter\Crypto\PairingCode;
+use RedC\Sceneshifter\Crypto\TransportPolicy;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Registry\Site;
+use RedC\Sceneshifter\Store\KeyValueStore;
+use RedC\Sceneshifter\Transport\Gate;
+use RedC\Sceneshifter\Transport\Transport;
+use RedC\Sceneshifter\Transport\TransportResult;
 
 final class Sisters {
 
-	public const STATUS_ROUTE = '/sister-sync/v1/status';
-	public const UNPAIR_ROUTE = '/sister-sync/v1/unpair';
+	public const STATUS_ROUTE = '/sceneshifter/v1/status';
+	public const UNPAIR_ROUTE = '/sceneshifter/v1/unpair';
 
 	private ?SiteKeys $keys = null;
 	private PairingStore $pairings;
@@ -34,7 +34,7 @@ final class Sisters {
 	private $http;
 
 	/**
-	 * @param Site|null     $self           This site, or null when Sister Sync is inactive here.
+	 * @param Site|null     $self           This site, or null when Sceneshifter is inactive here.
 	 * @param Registry      $registry       The site list.
 	 * @param KeyValueStore $store          Where keys, pairings and codes are kept.
 	 * @param NonceStore    $nonces         Seen request nonces and used pairing tokens.
@@ -64,7 +64,7 @@ final class Sisters {
 	}
 
 	/**
-	 * This site's keys, or null when Sister Sync is inactive here.
+	 * This site's keys, or null when Sceneshifter is inactive here.
 	 */
 	public function keys(): ?SiteKeys {
 		return $this->keys;
@@ -141,7 +141,7 @@ final class Sisters {
 		$site      = $this->registry->get( $code->siteId );
 		$transport = $this->transport();
 		if ( null === $site || null === $transport ) {
-			throw new PairingException( __( 'Sister Sync is inactive on this site, so it can\'t pair.', 'sister-sync' ) );
+			throw new PairingException( __( 'Sceneshifter is inactive on this site, so it can\'t pair.', 'sceneshifter' ) );
 		}
 
 		$result = $transport->sendWithKey( $site, $code->publicKey, 'POST', Handshake::ROUTE, $handshake->requestPayload( $code ) );
@@ -149,7 +149,7 @@ final class Sisters {
 			throw new PairingException(
 				sprintf(
 					/* translators: %s: site name. */
-					__( '%1$s didn\'t accept the code. It may have been used already, replaced by a newer code or expired, or the two servers\' clocks may differ by more than 5 minutes. Make a new code on %1$s and try again.', 'sister-sync' ),
+					__( '%1$s didn\'t accept the code. It may have been used already, replaced by a newer code or expired, or the two servers\' clocks may differ by more than 5 minutes. Make a new code on %1$s and try again.', 'sceneshifter' ),
 					$site->label
 				)
 			);
@@ -196,7 +196,7 @@ final class Sisters {
 	public function status( string $siteId ): TransportResult {
 		$transport = $this->transport();
 		if ( null === $transport ) {
-			return new TransportResult( TransportResult::NO_KEY, __( 'Sister Sync is inactive on this site.', 'sister-sync' ) );
+			return new TransportResult( TransportResult::NO_KEY, __( 'Sceneshifter is inactive on this site.', 'sceneshifter' ) );
 		}
 		return $transport->send( $siteId, 'GET', self::STATUS_ROUTE );
 	}
@@ -219,7 +219,7 @@ final class Sisters {
 
 	private function requireHandshake(): Handshake {
 		if ( null === $this->self ) {
-			throw new PairingException( __( 'Sister Sync is inactive on this site, so it can\'t pair. Check the site list first.', 'sister-sync' ) );
+			throw new PairingException( __( 'Sceneshifter is inactive on this site, so it can\'t pair. Check the site list first.', 'sceneshifter' ) );
 		}
 		$handshake = $this->handshake( true );
 		if ( null === $handshake ) {
@@ -233,9 +233,9 @@ final class Sisters {
 	 */
 	public static function keyProblem( string $status ): string {
 		return match ( $status ) {
-			SiteKeys::NO_SALTS => __( 'This site\'s wp-config.php has no unique salts, so Sister Sync can\'t keep a key safe here. Set unique salts first.', 'sister-sync' ),
-			SiteKeys::UNREADABLE, SiteKeys::FOREIGN => __( 'This site\'s key was made on another environment, most likely because the database was copied from there. Sister Sync won\'t send or accept requests until this site has a new key and is paired again.', 'sister-sync' ),
-			default => __( 'This site has no usable key.', 'sister-sync' ),
+			SiteKeys::NO_SALTS => __( 'This site\'s wp-config.php has no unique salts, so Sceneshifter can\'t keep a key safe here. Set unique salts first.', 'sceneshifter' ),
+			SiteKeys::UNREADABLE, SiteKeys::FOREIGN => __( 'This site\'s key was made on another environment, most likely because the database was copied from there. Sceneshifter won\'t send or accept requests until this site has a new key and is paired again.', 'sceneshifter' ),
+			default => __( 'This site has no usable key.', 'sceneshifter' ),
 		};
 	}
 }

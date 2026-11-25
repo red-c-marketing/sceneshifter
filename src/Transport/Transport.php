@@ -5,21 +5,21 @@
  * The site that starts an operation makes every call, because dev sites
  * are not public. No retries or chunking yet.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Transport;
+namespace RedC\Sceneshifter\Transport;
 
 use JsonException;
-use RedC\SisterSync\Crypto\KeyPair;
-use RedC\SisterSync\Crypto\SignedRequest;
-use RedC\SisterSync\Crypto\SignedResponse;
-use RedC\SisterSync\Crypto\TransportPolicy;
-use RedC\SisterSync\Pairing\PairingStore;
-use RedC\SisterSync\Registry\Registry;
-use RedC\SisterSync\Registry\Site;
+use RedC\Sceneshifter\Crypto\KeyPair;
+use RedC\Sceneshifter\Crypto\SignedRequest;
+use RedC\Sceneshifter\Crypto\SignedResponse;
+use RedC\Sceneshifter\Crypto\TransportPolicy;
+use RedC\Sceneshifter\Pairing\PairingStore;
+use RedC\Sceneshifter\Registry\Registry;
+use RedC\Sceneshifter\Registry\Site;
 
 final class Transport {
 
@@ -66,19 +66,19 @@ final class Transport {
 	 *
 	 * @param string                    $siteId  The sister's registry ID.
 	 * @param string                    $method  GET or POST.
-	 * @param string                    $route   REST route, for example /sister-sync/v1/status.
+	 * @param string                    $route   REST route, for example /sceneshifter/v1/status.
 	 * @param array<string, mixed>|null $payload JSON body for POST.
 	 */
 	public function send( string $siteId, string $method, string $route, ?array $payload = null ): TransportResult {
 		$site = $this->registry->get( $siteId );
 		if ( null === $site ) {
 			/* translators: %s: site ID. */
-			return new TransportResult( TransportResult::NOT_IN_REGISTRY, sprintf( __( '%s isn\'t in this site\'s list of sites.', 'sister-sync' ), $siteId ) );
+			return new TransportResult( TransportResult::NOT_IN_REGISTRY, sprintf( __( '%s isn\'t in this site\'s list of sites.', 'sceneshifter' ), $siteId ) );
 		}
 		$pairing = $this->pairings->get( $siteId );
 		if ( null === $pairing ) {
 			/* translators: %s: site name. */
-			return new TransportResult( TransportResult::NOT_PAIRED, sprintf( __( 'This site isn\'t paired with %s.', 'sister-sync' ), $site->label ) );
+			return new TransportResult( TransportResult::NOT_PAIRED, sprintf( __( 'This site isn\'t paired with %s.', 'sceneshifter' ), $site->label ) );
 		}
 
 		$result = $this->sendWithKey( $site, $pairing->publicKey, $method, $route, $payload );
@@ -101,7 +101,7 @@ final class Transport {
 	public function sendWithKey( Site $site, string $peerKey, string $method, string $route, ?array $payload = null ): TransportResult {
 		$method = strtoupper( $method );
 		if ( null === $this->keys ) {
-			return new TransportResult( TransportResult::NO_KEY, __( 'This site has no usable key, so it can\'t sign requests. Open Sister Sync → Settings → Pairing.', 'sister-sync' ) );
+			return new TransportResult( TransportResult::NO_KEY, __( 'This site has no usable key, so it can\'t sign requests. Open Sceneshifter → Settings → Pairing.', 'sceneshifter' ) );
 		}
 
 		$url = self::url( $site, $route );
@@ -109,12 +109,12 @@ final class Transport {
 			$host    = (string) parse_url( $url, PHP_URL_HOST );
 			$message = sprintf(
 				/* translators: 1: site name, 2: address. */
-				__( '%1$s\'s address (%2$s) doesn\'t use HTTPS, so nothing was sent to it.', 'sister-sync' ),
+				__( '%1$s\'s address (%2$s) doesn\'t use HTTPS, so nothing was sent to it.', 'sceneshifter' ),
 				$site->label,
 				$site->url
 			);
 			if ( TransportPolicy::isDevHost( strtolower( $host ) ) ) {
-				$message .= ' ' . __( 'Plain HTTP to .test and .localhost sites can be allowed under Local development in the Pairing settings.', 'sister-sync' );
+				$message .= ' ' . __( 'Plain HTTP to .test and .localhost sites can be allowed under Local development in the Pairing settings.', 'sceneshifter' );
 			}
 			return new TransportResult( TransportResult::INSECURE_URL, $message );
 		}
@@ -140,7 +140,7 @@ final class Transport {
 			return new TransportResult(
 				TransportResult::UNREACHABLE,
 				/* translators: 1: site name, 2: error from the HTTP library. */
-				sprintf( __( 'Couldn\'t reach %1$s: %2$s', 'sister-sync' ), $site->label, $reply ),
+				sprintf( __( 'Couldn\'t reach %1$s: %2$s', 'sceneshifter' ), $site->label, $reply ),
 				array(),
 				0,
 				$elapsed
@@ -154,9 +154,9 @@ final class Transport {
 				TransportResult::REDIRECTED,
 				sprintf(
 					/* translators: 1: site name, 2: address it redirected to. */
-					__( '%1$s redirected the request to %2$s. Check its address in the site list.', 'sister-sync' ),
+					__( '%1$s redirected the request to %2$s. Check its address in the site list.', 'sceneshifter' ),
 					$site->label,
-					$rheaders['location'] ?? __( 'another address', 'sister-sync' )
+					$rheaders['location'] ?? __( 'another address', 'sceneshifter' )
 				),
 				array(),
 				$status,
@@ -168,7 +168,7 @@ final class Transport {
 				TransportResult::REFUSED,
 				sprintf(
 					/* translators: %s: site name. */
-					__( '%s didn\'t accept the request. It may not be paired with this site, Sister Sync may be inactive or out of date there, or the two servers\' clocks may differ by more than 5 minutes.', 'sister-sync' ),
+					__( '%s didn\'t accept the request. It may not be paired with this site, Sceneshifter may be inactive or out of date there, or the two servers\' clocks may differ by more than 5 minutes.', 'sceneshifter' ),
 					$site->label
 				),
 				array(),
@@ -181,7 +181,7 @@ final class Transport {
 				TransportResult::HTTP_ERROR,
 				sprintf(
 					/* translators: %s: site name. */
-					__( '%s asked for a username and password (HTTP access control). Sister Sync can\'t send those yet, so turn off HTTP access control for that environment.', 'sister-sync' ),
+					__( '%s asked for a username and password (HTTP access control). Sceneshifter can\'t send those yet, so turn off HTTP access control for that environment.', 'sceneshifter' ),
 					$site->label
 				),
 				array(),
@@ -193,7 +193,7 @@ final class Transport {
 			return new TransportResult(
 				TransportResult::HTTP_ERROR,
 				/* translators: 1: site name, 2: HTTP status code. */
-				sprintf( __( '%1$s answered with HTTP status %2$d.', 'sister-sync' ), $site->label, $status ),
+				sprintf( __( '%1$s answered with HTTP status %2$d.', 'sceneshifter' ), $site->label, $status ),
 				array(),
 				$status,
 				$elapsed
@@ -206,7 +206,7 @@ final class Transport {
 				TransportResult::BAD_SIGNATURE,
 				sprintf(
 					/* translators: %s: site name. */
-					__( 'The reply from %s wasn\'t signed with its key. The address may point at a different site, or something between the two sites changed the reply.', 'sister-sync' ),
+					__( 'The reply from %s wasn\'t signed with its key. The address may point at a different site, or something between the two sites changed the reply.', 'sceneshifter' ),
 					$site->label
 				),
 				array(),
@@ -224,7 +224,7 @@ final class Transport {
 			return new TransportResult(
 				TransportResult::BAD_RESPONSE,
 				/* translators: %s: site name. */
-				sprintf( __( 'The reply from %s couldn\'t be read.', 'sister-sync' ), $site->label ),
+				sprintf( __( 'The reply from %s couldn\'t be read.', 'sceneshifter' ), $site->label ),
 				array(),
 				$status,
 				$elapsed

@@ -7,12 +7,12 @@
  * Root-relative URLs are ignored on purpose: they always point at the site
  * they are on, so they can never be a sister reference.
  *
- * @package RedC\SisterSync
+ * @package RedC\Sceneshifter
  */
 
 declare(strict_types=1);
 
-namespace RedC\SisterSync\Scanner;
+namespace RedC\Sceneshifter\Scanner;
 
 final class UrlExtractor {
 
