@@ -80,9 +80,11 @@ final class CheckPage {
 				?>
 			</p>
 
-			<?php if ( array() === $ids ) : ?>
-				<p><?php esc_html_e( 'Choose posts to check from any enabled list screen, using the "Check sister links" row action or bulk action. A site-wide scan report is coming next.', 'sister-sync' ); ?></p>
-			<?php endif; ?>
+			<?php
+			if ( array() === $ids ) {
+				$this->renderStart();
+			}
+			?>
 
 			<?php
 			foreach ( $ids as $id ) {
@@ -94,6 +96,49 @@ final class CheckPage {
 			}
 			?>
 		</div>
+		<?php
+	}
+
+	/**
+	 * What to do when no posts were sent here: links to the list screens
+	 * that have the Check actions, and to the site-wide report.
+	 */
+	private function renderStart(): void {
+		$links = array();
+		foreach ( $this->plugin->options()->postTypes() as $postType ) {
+			$object = get_post_type_object( $postType );
+			if ( ! $object || ! $object->show_ui || ! current_user_can( $object->cap->edit_posts ) ) {
+				continue;
+			}
+			$links[] = sprintf(
+				'<a href="%1$s">%2$s</a>',
+				esc_url( admin_url( 'edit.php?post_type=' . $postType ) ),
+				esc_html( $object->labels->name )
+			);
+		}
+		?>
+		<p><?php esc_html_e( 'To check particular posts, open one of the lists below. Use "Check sister links" under a post\'s title, or tick several and choose "Check sister links" from Bulk actions. The results appear on this page.', 'sister-sync' ); ?></p>
+		<?php if ( array() !== $links ) : ?>
+			<ul class="ul-disc">
+				<?php foreach ( $links as $link ) : ?>
+					<li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above. ?></li>
+				<?php endforeach; ?>
+			</ul>
+		<?php else : ?>
+			<p><em><?php esc_html_e( 'No content types are enabled for checking. An administrator can choose them in Sister Sync → Settings → Check.', 'sister-sync' ); ?></em></p>
+		<?php endif; ?>
+		<?php if ( current_user_can( 'manage_options' ) ) : ?>
+			<p>
+				<?php
+				printf(
+					/* translators: %s: link to the report page. */
+					esc_html__( 'To check the whole site at once, including menus, widgets, ACF options and synced patterns, use the %s.', 'sister-sync' ),
+					'<a href="' . esc_url( \RedC\SisterSync\SiteScan\ReportPage::url() ) . '">' . esc_html__( 'Report', 'sister-sync' ) . '</a>'
+				);
+				?>
+			</p>
+		<?php endif; ?>
+		<p><?php esc_html_e( 'The editor also checks each post as you write, in the Sister Sync panel.', 'sister-sync' ); ?></p>
 		<?php
 	}
 
