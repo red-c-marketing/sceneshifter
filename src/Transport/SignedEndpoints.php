@@ -75,7 +75,7 @@ final class SignedEndpoints {
 				'permission_callback' => array( $this, 'verified' ),
 			)
 		);
-		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link', '/preflight' => 'preflight', '/import' => 'import', '/media/chunk' => 'mediaChunk', '/media/commit' => 'mediaCommit' ) as $route => $callback ) {
+		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link', '/preflight' => 'preflight', '/import' => 'import', '/media/chunk' => 'mediaChunk', '/media/commit' => 'mediaCommit', '/rollback' => 'rollback' ) as $route => $callback ) {
 			register_rest_route(
 				RestController::NAMESPACE,
 				$route,
@@ -191,6 +191,26 @@ final class SignedEndpoints {
 			return self::notFound();
 		}
 		return $this->signed( $request, $sender, $responder->import( $sender, self::payload( $request ) ) );
+	}
+
+	public function rollback( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender   = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$rollback = $this->plugin->rollback();
+		if ( null === $sender || null === $rollback ) {
+			return self::notFound();
+		}
+		$data = self::payload( $request );
+		return $this->signed(
+			$request,
+			$sender,
+			$rollback->undo(
+				$sender,
+				is_string( $data['transfer'] ?? null ) ? $data['transfer'] : '',
+				is_int( $data['post'] ?? null ) ? $data['post'] : 0,
+				! empty( $data['force'] ),
+				is_string( $data['user'] ?? null ) ? substr( $data['user'], 0, 250 ) : ''
+			)
+		);
 	}
 
 	public function mediaChunk( WP_REST_Request $request ): WP_REST_Response|WP_Error {

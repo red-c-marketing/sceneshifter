@@ -15,7 +15,9 @@ use RedC\Sceneshifter\SyncMap\InventoryCache;
 use RedC\Sceneshifter\SyncMap\LinkExisting;
 use RedC\Sceneshifter\SyncMap\MemoryMapStore;
 use RedC\Sceneshifter\SyncMap\Responder;
+use RedC\Sceneshifter\Log\MemoryLogStore;
 use RedC\Sceneshifter\Transfer\ImportResponder;
+use RedC\Sceneshifter\Transfer\Rollback;
 use RedC\Sceneshifter\Transfer\MediaReceiver;
 use RedC\Sceneshifter\Transfer\MemorySnapshotStore;
 use RedC\Sceneshifter\Transfer\PreflightResponder;
@@ -37,6 +39,7 @@ final class SisterHarness {
 	public MemoryPostWriter $writer;
 	public MemorySnapshotStore $snapshots;
 	public MemoryMediaFiles $mediaFiles;
+	public MemoryLogStore $log;
 	private Registry $registry;
 
 	/** @var array<int, list<\RedC\Sceneshifter\Scanner\Finding>> Links to other environments found in a written post. */
@@ -67,6 +70,7 @@ final class SisterHarness {
 		$this->writer     = new MemoryPostWriter( $this->facts, $this->lookup );
 		$this->snapshots  = new MemorySnapshotStore();
 		$this->mediaFiles = new MemoryMediaFiles();
+		$this->log        = new MemoryLogStore();
 		$this->boot( $registry, $active );
 		$site = $registry->get( $siteId );
 		if ( null !== $site ) {
@@ -137,6 +141,10 @@ final class SisterHarness {
 		if ( ImportResponder::ROUTE === $route && 'POST' === $method ) {
 			return $this->signed( $headers, $sender, $this->importer()->import( $sender, (array) json_decode( $body, true ) ) );
 		}
+		if ( Rollback::ROUTE === $route && 'POST' === $method ) {
+			$data = (array) json_decode( $body, true );
+			return $this->signed( $headers, $sender, $this->rollback()->undo( $sender, (string) ( $data['transfer'] ?? '' ), (int) ( $data['post'] ?? 0 ), ! empty( $data['force'] ), (string) ( $data['user'] ?? '' ) ) );
+		}
 		if ( MediaReceiver::CHUNK_ROUTE === $route && 'POST' === $method ) {
 			return $this->signed( $headers, $sender, $this->receiver()->chunk( $sender, (array) json_decode( $body, true ) ) );
 		}
@@ -162,7 +170,11 @@ final class SisterHarness {
 	}
 
 	public function importer(): ImportResponder {
-		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000 );
+		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000 );
+	}
+
+	public function rollback(): Rollback {
+		return new Rollback( $this->map, $this->snapshots, $this->writer, $this->facts, $this->log );
 	}
 
 	public function receiver(): MediaReceiver {

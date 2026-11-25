@@ -68,6 +68,20 @@ final class DbMapStore implements MapStore {
 		);
 	}
 
+	public function delete( string $sister, string $objectType, int $localId ): void {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$this->db->delete(
+			$this->table,
+			array(
+				'site'        => $this->selfId,
+				'sister'      => $sister,
+				'object_type' => $objectType,
+				'local_id'    => $localId,
+			),
+			array( '%s', '%s', '%s', '%d' )
+		);
+	}
+
 	public function linked( string $sister, string $objectType ): array {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
 		$rows   = $this->db->get_results( $this->db->prepare( "SELECT local_id, remote_id FROM {$this->table} WHERE site = %s AND sister = %s AND object_type = %s", $this->selfId, $sister, $objectType ), ARRAY_A );

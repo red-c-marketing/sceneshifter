@@ -21,6 +21,8 @@ declare(strict_types=1);
 
 namespace RedC\Sceneshifter\Transfer;
 
+use RedC\Sceneshifter\Log\LogEntry;
+use RedC\Sceneshifter\Log\LogStore;
 use RedC\Sceneshifter\Registry\Registry;
 use RedC\Sceneshifter\Registry\Site;
 use RedC\Sceneshifter\SyncMap\MapEntry;
@@ -51,6 +53,7 @@ final class PushRunner {
 	 * @param callable(int): ?string  $ensureUuid Gives a post a Sceneshifter ID if it has none, and returns it.
 	 * @param MapStore                $map        This site's sync map.
 	 * @param MediaSource             $media      Reads media files.
+	 * @param LogStore                $log        This site's transfer log.
 	 * @param (callable(): int)|null  $clock      Current Unix time.
 	 */
 	public function __construct(
@@ -62,6 +65,7 @@ final class PushRunner {
 		callable $ensureUuid,
 		private readonly MapStore $map,
 		private readonly MediaSource $media,
+		private readonly LogStore $log,
 		?callable $clock = null
 	) {
 		$this->packager   = $packager;
@@ -75,8 +79,96 @@ final class PushRunner {
 	 * @param string               $transfer UUID shared by every post in the batch.
 	 * @param array<string, mixed> $options  new_status, existing_status, create_terms.
 	 * @param int|null|false       $expected The post the preview said it would update (null for new); false to skip the check.
+	 * @param string               $user     Who started it, for both sites' logs.
 	 */
-	public function run( string $targetId, int $postId, string $transfer, array $options = array(), int|null|false $expected = false ): PushResult {
+	public function run( string $targetId, int $postId, string $transfer, array $options = array(), int|null|false $expected = false, string $user = '' ): PushResult {
+		$result = $this->push( $targetId, $postId, $transfer, $options, $expected, $user );
+		$this->log->add(
+			new LogEntry(
+				0,
+				$transfer,
+				LogEntry::OUT,
+				$targetId,
+				$user,
+				$postId,
+				$result->targetId,
+				$result->title,
+				$result->ok() ? LogEntry::DONE : LogEntry::FAILED,
+				$result->created,
+				$result->error,
+				array(
+					'media'    => $result->mediaCopied,
+					'rewrites' => $result->rewrites,
+					'mismatch' => $result->mismatch,
+					'links'    => $result->linksTotal,
+					'missing'  => count( $result->missing ),
+					'status'   => $result->status,
+				),
+				( $this->clock )()
+			)
+		);
+		return $result;
+	}
+
+	/**
+	 * Asks the receiving site to undo one post from a push logged here.
+	 *
+	 * @param bool $force Undo even if the post was edited there since.
+	 * @return array{ok: bool, code: string|null, message: string|null}
+	 */
+	public function undo( LogEntry $entry, bool $force, string $user ): array {
+		$target = $this->registry->get( $entry->sister );
+		if ( LogEntry::OUT !== $entry->direction || LogEntry::DONE !== $entry->result || null === $entry->targetId || null === $target || null === $this->transport ) {
+			return array(
+				'ok'      => false,
+				'code'    => Rollback::NOT_FOUND,
+				'message' => null,
+			);
+		}
+		$reply = $this->transport->send(
+			$target->id,
+			'POST',
+			Rollback::ROUTE,
+			array(
+				'transfer' => $entry->transfer,
+				'post'     => $entry->targetId,
+				'force'    => $force,
+				'user'     => $user,
+			)
+		);
+		if ( ! $reply->ok() ) {
+			return array(
+				'ok'      => false,
+				'code'    => Rollback::FAILED,
+				'message' => $reply->message,
+			);
+		}
+		if ( empty( $reply->data['undone'] ) ) {
+			$code = is_string( $reply->data['error'] ?? null ) ? $reply->data['error'] : Rollback::FAILED;
+			if ( Rollback::ALREADY === $code ) {
+				$this->log->setResult( $entry->id, LogEntry::UNDONE, null );
+			}
+			return array(
+				'ok'      => false,
+				'code'    => $code,
+				'message' => is_string( $reply->data['message'] ?? null ) ? $reply->data['message'] : null,
+			);
+		}
+		if ( $entry->created ) {
+			$this->map->delete( $target->id, MapEntry::POST, $entry->sourceId );
+		}
+		$this->log->setResult( $entry->id, LogEntry::UNDONE, '' === $user ? null : $user );
+		return array(
+			'ok'      => true,
+			'code'    => null,
+			'message' => null,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $options
+	 */
+	private function push( string $targetId, int $postId, string $transfer, array $options, int|null|false $expected, string $user ): PushResult {
 		$target    = $this->registry->get( $targetId );
 		$transport = $this->transport;
 		if ( null === $target || null === $transport ) {
@@ -140,6 +232,7 @@ final class PushRunner {
 				'target'      => $targetPost,
 				'expect_hash' => $item->target['hash'] ?? null,
 				'author'      => $item->author['id'] ?? null,
+				'user'        => $user,
 				'options'     => array(
 					'new_status'      => (string) ( $options['new_status'] ?? 'draft' ),
 					'existing_status' => (string) ( $options['existing_status'] ?? 'keep' ),

@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace RedC\Sceneshifter;
 
 use RedC\Sceneshifter\Admin\AdminBar;
+use RedC\Sceneshifter\Admin\LogPage;
 use RedC\Sceneshifter\Admin\Notices;
 use RedC\Sceneshifter\Admin\PushPage;
 use RedC\Sceneshifter\Admin\RegistryTransfer;
@@ -43,7 +44,9 @@ use RedC\Sceneshifter\SyncMap\InventoryCache;
 use RedC\Sceneshifter\SyncMap\SyncMap;
 use RedC\Sceneshifter\SyncMap\Uuid;
 use RedC\Sceneshifter\SyncMap\WpContentIndex;
+use RedC\Sceneshifter\Log\DbLogStore;
 use RedC\Sceneshifter\Transfer\DbSnapshotStore;
+use RedC\Sceneshifter\Transfer\Rollback;
 use RedC\Sceneshifter\Transfer\ImportResponder;
 use RedC\Sceneshifter\Transfer\MediaReceiver;
 use RedC\Sceneshifter\Transfer\Packager;
@@ -168,6 +171,7 @@ final class Plugin {
 			( new ClassicMetaBox( $this ) )->register();
 			( new EditorAssets( $this ) )->register();
 			( new PushPage( $this ) )->register();
+			( new LogPage( $this ) )->register();
 		}
 	}
 
@@ -267,8 +271,29 @@ final class Plugin {
 			new WpSiteFacts( new Packager( $self ) ),
 			new WpPostWriter(),
 			DbSnapshotStore::forSite( $self->id ),
+			DbLogStore::forSite( $self->id ),
 			fn( int $id ): array => $this->findings( $id )
 		);
+	}
+
+	/**
+	 * Undoes pushes this site received. Null when inactive.
+	 */
+	public function rollback(): ?Rollback {
+		$syncMap = $this->syncMap();
+		$self    = $this->sisters()->self();
+		if ( null === $syncMap || null === $self ) {
+			return null;
+		}
+		return new Rollback( $syncMap->map(), DbSnapshotStore::forSite( $self->id ), new WpPostWriter(), new WpSiteFacts( new Packager( $self ) ), DbLogStore::forSite( $self->id ) );
+	}
+
+	/**
+	 * This site's transfer log. Null when inactive.
+	 */
+	public function log(): ?DbLogStore {
+		$self = $this->sisters()->self();
+		return null === $self ? null : DbLogStore::forSite( $self->id );
 	}
 
 	/**
@@ -309,7 +334,8 @@ final class Plugin {
 				return $uuid;
 			},
 			$syncMap->map(),
-			new WpMediaSource()
+			new WpMediaSource(),
+			DbLogStore::forSite( $self->id )
 		);
 	}
 

@@ -28,6 +28,7 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_scan_results" );
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_nonces" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_map" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_snapshots" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_log" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'sceneshifter_inventory_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 delete_post_meta_by_key( '_sceneshifter_uuid' );
 

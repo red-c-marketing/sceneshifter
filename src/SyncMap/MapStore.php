@@ -22,6 +22,11 @@ interface MapStore {
 	public function save( MapEntry $entry ): void;
 
 	/**
+	 * Forgets the link for a local object, if there is one.
+	 */
+	public function delete( string $sister, string $objectType, int $localId ): void;
+
+	/**
 	 * Local ID => remote ID for everything linked to a sister.
 	 *
 	 * @return array<int, int>

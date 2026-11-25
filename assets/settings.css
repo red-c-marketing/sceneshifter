@@ -456,3 +456,13 @@ code.sceneshifter-fingerprint {
 	list-style: disc;
 	color: #996800;
 }
+
+.sceneshifter-inline-form {
+	display: inline;
+	margin: 0;
+}
+
+.sceneshifter-log-table td {
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}

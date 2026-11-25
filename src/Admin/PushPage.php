@@ -293,7 +293,7 @@ final class PushPage {
 						<p class="description">
 							<?php
 							/* translators: %s: environment name. */
-							echo esc_html( sprintf( __( 'Changes to a published post on %s show to visitors straight away. Its previous version is kept so the push can be undone.', 'sceneshifter' ), $target->label ) );
+							echo esc_html( sprintf( __( 'Changes to a published post on %s show to visitors straight away. Its previous version is kept, so the push can be undone from Sceneshifter → Log.', 'sceneshifter' ), $target->label ) );
 							?>
 						</p>
 					</td>
@@ -352,7 +352,7 @@ final class PushPage {
 		if ( function_exists( 'set_time_limit' ) ) {
 			set_time_limit( 300 ); // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- copying media can take a while.
 		}
-		$result = $runner->run( $target->id, $postId, $transfer, $options, 'new' === $expected ? null : ( ctype_digit( $expected ) ? (int) $expected : false ) );
+		$result = $runner->run( $target->id, $postId, $transfer, $options, 'new' === $expected ? null : ( ctype_digit( $expected ) ? (int) $expected : false ), wp_get_current_user()->display_name );
 		wp_send_json_success(
 			array(
 				'ok'   => $result->ok(),

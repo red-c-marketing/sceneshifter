@@ -31,6 +31,10 @@ final class MemoryMapStore implements MapStore {
 		$this->entries[ "{$entry->sister}|{$entry->objectType}|{$entry->localId}" ] = $entry;
 	}
 
+	public function delete( string $sister, string $objectType, int $localId ): void {
+		unset( $this->entries[ "{$sister}|{$objectType}|{$localId}" ] );
+	}
+
 	public function linked( string $sister, string $objectType ): array {
 		$linked = array();
 		foreach ( $this->entries as $entry ) {

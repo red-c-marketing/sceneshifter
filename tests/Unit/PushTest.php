@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RedC\Sceneshifter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use RedC\Sceneshifter\Log\LogEntry;
 use RedC\Sceneshifter\Scanner\Finding;
 use RedC\Sceneshifter\SyncMap\MapEntry;
 use RedC\Sceneshifter\Transfer\ContentHash;
@@ -15,6 +16,7 @@ use RedC\Sceneshifter\Transfer\Package;
 use RedC\Sceneshifter\Transfer\PreflightResponder;
 use RedC\Sceneshifter\Transfer\PushPreview;
 use RedC\Sceneshifter\Transfer\PushRunner;
+use RedC\Sceneshifter\Transfer\Rollback;
 
 final class PushTest extends TestCase {
 
@@ -148,6 +150,73 @@ final class PushTest extends TestCase {
 		$this->assertNotContains( ImportResponder::ROUTE, $staging->served );
 	}
 
+	public function test_both_sites_log_the_push_and_a_failure(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->runner( $dev, array( 11 => self::about() ), self::mediaA() )->run( 'staging', 11, self::TRANSFER, array(), null, 'Ann' );
+
+		$out = $dev->log->get( 1 );
+		$in  = $staging->log->get( 1 );
+		$this->assertSame( array( LogEntry::OUT, 'staging', 'Ann', 11, 900, LogEntry::DONE, true ), array( $out?->direction, $out?->sister, $out?->user, $out?->sourceId, $out?->targetId, $out?->result, $out?->created ) );
+		$this->assertSame( array( LogEntry::IN, 'dev', 'Ann', 11, 900, LogEntry::DONE, true ), array( $in?->direction, $in?->sister, $in?->user, $in?->sourceId, $in?->targetId, $in?->result, $in?->created ) );
+		$this->assertSame( self::TRANSFER, $in?->transfer );
+
+		$staging->writer->fail = 'Disk full';
+		$this->runner( $dev, array( 11 => self::about() ), self::mediaA() )->run( 'staging', 11, self::TRANSFER, array(), false, 'Ann' );
+		$this->assertSame( LogEntry::FAILED, $dev->log->get( 2 )?->result );
+		$this->assertSame( LogEntry::FAILED, $staging->log->get( 2 )?->result );
+		$this->assertSame( 'Disk full', $staging->log->get( 2 )?->message );
+	}
+
+	public function test_undoing_a_new_post_bins_it_and_forgets_the_link(): void {
+		[ $staging, $dev ] = $this->paired();
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), null, 'Ann' );
+
+		$undo = $runner->undo( $dev->log->get( 1 ), false, 'Bo' );
+
+		$this->assertTrue( $undo['ok'] );
+		$this->assertSame( array( 900 ), $staging->writer->discarded );
+		$this->assertNull( $staging->map->byRemote( 'dev', MapEntry::POST, 11 ) );
+		$this->assertNull( $dev->map->get( 'staging', MapEntry::POST, 11 ) );
+		$this->assertNotNull( $staging->map->byRemote( 'dev', MapEntry::POST, 5 ), 'Copied media stays linked.' );
+		$this->assertSame( array( LogEntry::UNDONE, 'Bo' ), array( $dev->log->get( 1 )?->result, $dev->log->get( 1 )?->message ) );
+		$this->assertSame( LogEntry::UNDONE, $staging->log->get( 1 )?->result );
+		$this->assertSame( Rollback::ALREADY, $staging->rollback()->undo( 'dev', self::TRANSFER, 900, false, 'Bo' )['error'] ?? null );
+		$this->assertSame( Rollback::NOT_FOUND, $staging->rollback()->undo( 'live', self::TRANSFER, 900, false, 'Bo' )['error'] ?? null );
+	}
+
+	public function test_undoing_an_update_restores_the_post_and_its_previous_link(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), 201, 'Ann' );
+		$this->assertSame( 'About us', $staging->facts->packages[201]->title() );
+
+		$undo = $runner->undo( $dev->log->get( 1 ), false, 'Bo' );
+
+		$this->assertTrue( $undo['ok'] );
+		$this->assertSame( 'Old title', $staging->facts->packages[201]->title() );
+		$entry = $staging->map->get( 'dev', MapEntry::POST, 201 );
+		$this->assertSame( array( 11, 1, null ), array( $entry?->remoteId, $entry?->linkedAt, $entry?->syncedAt ), 'The link is as it was before the push.' );
+		$this->assertNotNull( $dev->map->get( 'staging', MapEntry::POST, 11 ), 'The post still exists there, so this site keeps its link.' );
+	}
+
+	public function test_undo_asks_first_when_the_post_was_edited_since(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), 201, 'Ann' );
+		$staging->facts->packages[201] = self::package( 201, array( 'post_title' => 'Edited there later' ) );
+
+		$first = $runner->undo( $dev->log->get( 1 ), false, 'Bo' );
+		$this->assertFalse( $first['ok'] );
+		$this->assertSame( Rollback::CHANGED_SINCE, $first['code'] );
+		$this->assertSame( LogEntry::DONE, $dev->log->get( 1 )?->result );
+
+		$this->assertTrue( $runner->undo( $dev->log->get( 1 ), true, 'Bo' )['ok'] );
+		$this->assertSame( 'Old title', $staging->facts->packages[201]->title() );
+	}
+
 	public function test_receiver_accepts_retries_and_refuses_bad_uploads(): void {
 		$files    = new MemoryMediaFiles();
 		$map      = new \RedC\Sceneshifter\SyncMap\MemoryMapStore();
@@ -246,6 +315,7 @@ final class PushTest extends TestCase {
 			static fn( int $id ): ?string => $packages[ $id ]->uuid ?? null,
 			$dev->map,
 			$media,
+			$dev->log,
 			static fn(): int => 1700000000
 		);
 	}

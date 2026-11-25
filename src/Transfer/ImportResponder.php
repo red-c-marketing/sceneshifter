@@ -18,6 +18,8 @@ declare(strict_types=1);
 
 namespace RedC\Sceneshifter\Transfer;
 
+use RedC\Sceneshifter\Log\LogEntry;
+use RedC\Sceneshifter\Log\LogStore;
 use RedC\Sceneshifter\Scanner\Finding;
 use RedC\Sceneshifter\SyncMap\MapEntry;
 use RedC\Sceneshifter\SyncMap\MapStore;
@@ -53,6 +55,7 @@ final class ImportResponder {
 	 * @param SiteFacts                    $facts     Post types and post state.
 	 * @param PostWriter                   $writer    Writes posts.
 	 * @param SnapshotStore                $snapshots Where snapshots go.
+	 * @param LogStore                     $log       This site's transfer log.
 	 * @param callable(int): list<Finding> $findings  Links to other environments in a post.
 	 * @param (callable(): int)|null       $clock     Current Unix time.
 	 */
@@ -63,6 +66,7 @@ final class ImportResponder {
 		private readonly SiteFacts $facts,
 		private readonly PostWriter $writer,
 		private readonly SnapshotStore $snapshots,
+		private readonly LogStore $log,
 		callable $findings,
 		?callable $clock = null
 	) {
@@ -72,7 +76,7 @@ final class ImportResponder {
 
 	/**
 	 * @param string               $sender  The verified sister.
-	 * @param array<string, mixed> $payload {format, transfer, package, target, expect_hash, author, options}.
+	 * @param array<string, mixed> $payload {format, transfer, package, target, expect_hash, author, options, user}.
 	 * @return array<string, mixed> The result, or {error, message?} with nothing changed.
 	 */
 	public function import( string $sender, array $payload ): array {
@@ -110,11 +114,13 @@ final class ImportResponder {
 			if ( is_string( $expect ) && ContentHash::overall( $before['parts'] ) !== $expect ) {
 				return array( 'error' => self::CHANGED );
 			}
-			$snapshot = new Snapshot( 0, $transfer, $sender, $localId, false, $this->writer->snapshot( $localId ), $now );
+			$previous = $this->map->get( $sender, MapEntry::POST, $localId );
+			$snapshot = new Snapshot( 0, $transfer, $sender, $localId, false, $this->writer->snapshot( $localId ) + array( 'map' => null === $previous ? null : self::mapRow( $previous ) ), $now );
 			$snapshot = $snapshot->withId( $this->snapshots->save( $snapshot ) );
 		}
 
 		$options = is_array( $payload['options'] ?? null ) ? $payload['options'] : array();
+		$user    = is_string( $payload['user'] ?? null ) ? substr( $payload['user'], 0, 250 ) : '';
 		try {
 			$id = $this->writer->write(
 				$localId,
@@ -136,6 +142,7 @@ final class ImportResponder {
 					$restored = false;
 				}
 			}
+			$this->log->add( new LogEntry( 0, $transfer, LogEntry::IN, $sender, $user, $package->id, $localId, $package->title(), LogEntry::FAILED, false, $e->getMessage(), array( 'restored' => $restored ), $now ) );
 			return array(
 				'error'    => self::FAILED,
 				'message'  => $e->getMessage(),
@@ -154,13 +161,37 @@ final class ImportResponder {
 		$this->map->save( new MapEntry( $package->uuid, MapEntry::POST, $id, $sender, $package->id, $existing->linkedAt ?? $now, $hash, $now ) );
 
 		$findings = ( $this->findings )( $id );
+		$mismatch = null === $after ? array() : ContentHash::changed( ContentHash::parts( $package, $metaKeys ), $after['parts'] );
+		$this->log->add(
+			new LogEntry(
+				0,
+				$transfer,
+				LogEntry::IN,
+				$sender,
+				$user,
+				$package->id,
+				$id,
+				$package->title(),
+				LogEntry::DONE,
+				null === $localId,
+				null,
+				array(
+					'snapshot'    => $snapshot->id,
+					'hash'        => $hash,
+					'meta_keys'   => $metaKeys,
+					'mismatch'    => $mismatch,
+					'links_total' => count( $findings ),
+				),
+				$now
+			)
+		);
 		return array(
 			'id'          => $id,
 			'created'     => null === $localId,
 			'snapshot'    => $snapshot->id,
 			'status'      => $after['status'] ?? '',
 			'hash'        => $hash,
-			'mismatch'    => null === $after ? array() : ContentHash::changed( ContentHash::parts( $package, $metaKeys ), $after['parts'] ),
+			'mismatch'    => $mismatch,
 			'links'       => array_map(
 				static fn( Finding $f ): array => array(
 					'site'  => $f->sister->label,
@@ -171,6 +202,41 @@ final class ImportResponder {
 			),
 			'links_total' => count( $findings ),
 			'urls'        => $this->writer->urls( $id ),
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public static function mapRow( MapEntry $entry ): array {
+		return array(
+			'uuid'      => $entry->uuid,
+			'type'      => $entry->objectType,
+			'local'     => $entry->localId,
+			'sister'    => $entry->sister,
+			'remote'    => $entry->remoteId,
+			'linked_at' => $entry->linkedAt,
+			'hash'      => $entry->hash,
+			'synced_at' => $entry->syncedAt,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row From mapRow().
+	 */
+	public static function mapEntry( array $row ): ?MapEntry {
+		if ( ! is_string( $row['uuid'] ?? null ) || ! is_int( $row['local'] ?? null ) || ! is_int( $row['remote'] ?? null ) || ! is_string( $row['sister'] ?? null ) ) {
+			return null;
+		}
+		return new MapEntry(
+			$row['uuid'],
+			is_string( $row['type'] ?? null ) ? $row['type'] : MapEntry::POST,
+			$row['local'],
+			$row['sister'],
+			$row['remote'],
+			is_int( $row['linked_at'] ?? null ) ? $row['linked_at'] : 0,
+			is_string( $row['hash'] ?? null ) ? $row['hash'] : null,
+			is_int( $row['synced_at'] ?? null ) ? $row['synced_at'] : null
 		);
 	}
 
