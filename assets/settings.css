@@ -389,3 +389,52 @@ code.sceneshifter-fingerprint {
 	margin-left: 2em;
 	color: #b32d2e;
 }
+
+/* Push preview. */
+.sceneshifter-push-item {
+	max-width: 80em;
+	margin: 24px 0;
+	padding: 4px 16px 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid #2271b1;
+}
+
+.sceneshifter-push-item.is-blocked {
+	border-left-color: #d63638;
+}
+
+.sceneshifter-push-item h2 {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.sceneshifter-push-facts th {
+	width: 12em;
+}
+
+.sceneshifter-push-facts td,
+.sceneshifter-push-rewrites td {
+	overflow-wrap: anywhere;
+}
+
+.sceneshifter-push-list {
+	list-style: disc;
+	margin: 6px 0 0 2em;
+}
+
+.sceneshifter-push-rewrites {
+	margin-top: 12px;
+}
+
+.sceneshifter-push-rewrites summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.sceneshifter-push-rewrites table {
+	table-layout: fixed;
+	margin-top: 8px;
+}

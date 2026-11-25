@@ -14,6 +14,7 @@ final class Rewrite {
 	public const URL        = 'url';
 	public const ATTACHMENT = 'attachment';
 	public const POST       = 'post';
+	public const TERM       = 'term';
 
 	public function __construct(
 		public readonly string $kind,

@@ -43,10 +43,67 @@ final class BlockRewriter {
 	/** @var list<Unresolved> */
 	private array $unresolved = array();
 
+	/**
+	 * @param UrlRewriter           $urls     Moves source URLs onto the target.
+	 * @param IdMap                 $ids      Source => target IDs.
+	 * @param array<string, string> $acfTypes ACF field key => type, for ACF block data.
+	 */
 	public function __construct(
 		private readonly UrlRewriter $urls,
-		private readonly IdMap $ids
+		private readonly IdMap $ids,
+		private readonly array $acfTypes = array()
 	) {}
+
+	/**
+	 * Starts a new record of rewrites and unresolved references, for a
+	 * caller that rewrites several parts of one post through the methods
+	 * below and then calls finish().
+	 */
+	public function begin(): void {
+		$this->rewrites   = array();
+		$this->unresolved = array();
+	}
+
+	/**
+	 * @return array{rewrites: list<Rewrite>, unresolved: list<Unresolved>}
+	 */
+	public function finish(): array {
+		return array(
+			'rewrites'   => $this->rewrites,
+			'unresolved' => $this->unresolved,
+		);
+	}
+
+	/**
+	 * Parsed blocks, recorded into the current record.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks
+	 * @return list<array<string, mixed>>
+	 */
+	public function rewriteBlocks( array $blocks ): array {
+		return $this->rewriteList( $blocks, array() );
+	}
+
+	/**
+	 * HTML outside blocks: Classic content.
+	 */
+	public function rewriteHtmlText( string $html, string $location ): string {
+		return $this->rewriteHtml( $html, $location, true );
+	}
+
+	/**
+	 * Every source URL inside a value (scalar or nested arrays).
+	 */
+	public function rewriteUrls( mixed $value, string $location ): mixed {
+		return $this->urls->rewriteValue( $value, $location, $this->rewrites );
+	}
+
+	/**
+	 * An ID or list of IDs of one kind, mapped to the target.
+	 */
+	public function mapValue( string $kind, mixed $value, string $location ): mixed {
+		return $this->mapIds( $kind, $value, $location );
+	}
 
 	/**
 	 * @param array<int, array<string, mixed>> $blocks Parsed blocks.
@@ -102,6 +159,9 @@ final class BlockRewriter {
 				$attrs[ $attr ] = $this->mapIds( Rewrite::POST, $attrs[ $attr ], $location );
 			}
 		}
+		if ( str_starts_with( $name, 'acf/' ) && is_array( $attrs['data'] ?? null ) ) {
+			$attrs['data'] = $this->rewriteAcfData( $attrs['data'], $location );
+		}
 		$block['attrs'] = $this->urls->rewriteValue( $attrs, $location, $this->rewrites );
 
 		if ( isset( $block['innerHTML'] ) && is_string( $block['innerHTML'] ) ) {
@@ -120,6 +180,34 @@ final class BlockRewriter {
 			$block['innerBlocks'] = $this->rewriteList( $block['innerBlocks'], $path );
 		}
 		return $block;
+	}
+
+	/**
+	 * ACF block data: flat field names, each with a "_name" entry holding
+	 * its field key.
+	 *
+	 * @param array<mixed> $data Decoded JSON, so keys aren't guaranteed to be strings.
+	 * @return array<mixed>
+	 */
+	private function rewriteAcfData( array $data, string $location ): array {
+		foreach ( $data as $name => $value ) {
+			if ( ! is_string( $name ) || str_starts_with( $name, '_' ) ) {
+				continue;
+			}
+			$kind = AcfValues::idKind( AcfValues::type( $this->acfTypes, self::acfFieldKey( $data, $name ) ) );
+			if ( null !== $kind ) {
+				$data[ $name ] = $this->mapIds( $kind, $value, $location );
+			}
+		}
+		return $data;
+	}
+
+	/**
+	 * @param array<mixed> $data
+	 */
+	private static function acfFieldKey( array $data, string $name ): ?string {
+		$key = $data[ '_' . $name ] ?? null;
+		return is_string( $key ) && str_starts_with( $key, 'field_' ) ? $key : null;
 	}
 
 	/**
@@ -172,6 +260,25 @@ final class BlockRewriter {
 			$html
 		);
 
+		// Classic shortcodes: [gallery ids="1,2"] and [caption id="attachment_3"].
+		$html = (string) preg_replace_callback(
+			'~(\[gallery\b[^\]]*?\bids=["\'])([\d,\s]+)(["\'])|(\[caption\b[^\]]*?\bid=["\']attachment_)(\d+)(["\'])~i',
+			function ( array $m ) use ( $location, &$scratch ): string {
+				if ( '' !== $m[1] ) {
+					$ids = array();
+					foreach ( explode( ',', $m[2] ) as $raw ) {
+						$id = (int) trim( $raw );
+						if ( $id > 0 ) {
+							$ids[] = (string) $this->mapOne( Rewrite::ATTACHMENT, $id, $location, $scratch );
+						}
+					}
+					return $m[1] . implode( ',', $ids ) . $m[3];
+				}
+				return $m[4] . $this->mapOne( Rewrite::ATTACHMENT, (int) $m[5], $location, $scratch ) . $m[6];
+			},
+			$html
+		);
+
 		if ( $record ) {
 			foreach ( $scratch as $item ) {
 				if ( $item instanceof Unresolved ) {
@@ -182,6 +289,23 @@ final class BlockRewriter {
 			}
 		}
 		return $html;
+	}
+
+	/**
+	 * One ID for rewriteHtml(), noting the change or the miss in $scratch.
+	 *
+	 * @param list<Rewrite|Unresolved> $scratch
+	 */
+	private function mapOne( string $kind, int $id, string $location, array &$scratch ): int {
+		$mapped = $this->ids->get( $kind, $id );
+		if ( null === $mapped ) {
+			$scratch[] = new Unresolved( $kind, $id, $location );
+			return $id;
+		}
+		if ( $mapped !== $id ) {
+			$scratch[] = new Rewrite( $kind, $location, (string) $id, (string) $mapped );
+		}
+		return $mapped;
 	}
 
 	/**

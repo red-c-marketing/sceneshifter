@@ -15,6 +15,7 @@ use RedC\Sceneshifter\SyncMap\InventoryCache;
 use RedC\Sceneshifter\SyncMap\LinkExisting;
 use RedC\Sceneshifter\SyncMap\MemoryMapStore;
 use RedC\Sceneshifter\SyncMap\Responder;
+use RedC\Sceneshifter\Transfer\PreflightResponder;
 
 /**
  * A pretend site: its own stores and salts, a Sisters instance, and a fake
@@ -28,6 +29,8 @@ final class SisterHarness {
 	public Sisters $sisters;
 	public MemoryContentIndex $content;
 	public MemoryMapStore $map;
+	public MemoryTargetLookup $lookup;
+	public FakeSiteFacts $facts;
 	private Registry $registry;
 
 	/** @var array<string, self> by host */
@@ -47,6 +50,8 @@ final class SisterHarness {
 		$this->nonces = new MemoryNonceStore();
 		$this->content = new MemoryContentIndex();
 		$this->map     = new MemoryMapStore();
+		$this->lookup  = new MemoryTargetLookup();
+		$this->facts   = new FakeSiteFacts();
 		$this->boot( $registry, $active );
 		$site = $registry->get( $siteId );
 		if ( null !== $site ) {
@@ -112,6 +117,10 @@ final class SisterHarness {
 		}
 		if ( Responder::INVENTORY_ROUTE === $route && 'POST' === $method ) {
 			return $this->signed( $headers, $sender, $this->responder()->inventory( (array) json_decode( $body, true ) ) );
+		}
+		if ( PreflightResponder::ROUTE === $route && 'POST' === $method ) {
+			$responder = new PreflightResponder( '1', $this->map, $this->lookup, $this->facts );
+			return $this->signed( $headers, $sender, $responder->preflight( $sender, (array) json_decode( $body, true ) ) );
 		}
 		if ( Responder::LINK_ROUTE === $route && 'POST' === $method ) {
 			return $this->signed( $headers, $sender, $this->responder()->link( $sender, (array) json_decode( $body, true ), time() ) );

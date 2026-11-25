@@ -89,13 +89,8 @@ final class WpContentIndex implements ContentIndex {
 		$uuid = get_post_meta( $post->ID, Uuid::META_KEY, true );
 		$uuid = Uuid::isValid( $uuid ) ? $uuid : null;
 
-		if ( 'attachment' === $post->post_type ) {
-			$key  = (string) get_post_meta( $post->ID, '_wp_attached_file', true );
-			$size = self::fileSize( $post->ID );
-		} else {
-			$key  = is_post_type_hierarchical( $post->post_type ) ? (string) get_page_uri( $post ) : $post->post_name;
-			$size = null;
-		}
+		$key  = self::path( $post );
+		$size = 'attachment' === $post->post_type ? self::fileSize( $post->ID ) : null;
 
 		return new Item(
 			$post->ID,
@@ -109,7 +104,18 @@ final class WpContentIndex implements ContentIndex {
 		);
 	}
 
-	private static function fileSize( int $id ): ?int {
+	/**
+	 * What matching compares: the file under uploads for media, the page
+	 * URI for hierarchical types, the slug otherwise.
+	 */
+	public static function path( \WP_Post $post ): string {
+		if ( 'attachment' === $post->post_type ) {
+			return (string) get_post_meta( $post->ID, '_wp_attached_file', true );
+		}
+		return is_post_type_hierarchical( $post->post_type ) ? (string) get_page_uri( $post ) : $post->post_name;
+	}
+
+	public static function fileSize( int $id ): ?int {
 		$meta = get_post_meta( $id, '_wp_attachment_metadata', true );
 		if ( is_array( $meta ) && isset( $meta['filesize'] ) && is_numeric( $meta['filesize'] ) ) {
 			return (int) $meta['filesize'];

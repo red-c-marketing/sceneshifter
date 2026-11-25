@@ -12,6 +12,7 @@ namespace RedC\Sceneshifter;
 
 use RedC\Sceneshifter\Admin\AdminBar;
 use RedC\Sceneshifter\Admin\Notices;
+use RedC\Sceneshifter\Admin\PushPage;
 use RedC\Sceneshifter\Admin\RegistryTransfer;
 use RedC\Sceneshifter\Admin\SettingsPage;
 use RedC\Sceneshifter\Check\CheckPage;
@@ -42,6 +43,11 @@ use RedC\Sceneshifter\SyncMap\InventoryCache;
 use RedC\Sceneshifter\SyncMap\SyncMap;
 use RedC\Sceneshifter\SyncMap\Uuid;
 use RedC\Sceneshifter\SyncMap\WpContentIndex;
+use RedC\Sceneshifter\Transfer\Packager;
+use RedC\Sceneshifter\Transfer\PreflightResponder;
+use RedC\Sceneshifter\Transfer\PushPreview;
+use RedC\Sceneshifter\Transfer\WpSiteFacts;
+use RedC\Sceneshifter\Transfer\WpTargetLookup;
 use RedC\Sceneshifter\Transport\SignedEndpoints;
 use RedC\Sceneshifter\Url\UrlClassifier;
 
@@ -154,6 +160,7 @@ final class Plugin {
 			( new ListColumn( $this ) )->register();
 			( new ClassicMetaBox( $this ) )->register();
 			( new EditorAssets( $this ) )->register();
+			( new PushPage( $this ) )->register();
 		}
 	}
 
@@ -222,6 +229,42 @@ final class Plugin {
 			new InventoryCache( new WpOptionStore() ),
 			$this->registry,
 			$this->sisters()->transport()
+		);
+	}
+
+	/**
+	 * Target side of a push: answers POST /preflight. Null when inactive.
+	 */
+	public function preflightResponder(): ?PreflightResponder {
+		$syncMap = $this->syncMap();
+		$self    = $this->sisters()->self();
+		if ( null === $syncMap || null === $self ) {
+			return null;
+		}
+		return new PreflightResponder( self::PACKAGE_FORMAT, $syncMap->map(), new WpTargetLookup(), new WpSiteFacts( new Packager( $self ) ) );
+	}
+
+	/**
+	 * Source side of a push: the preview. Null when inactive.
+	 */
+	public function pushPreview(): ?PushPreview {
+		$self = $this->sisters()->self();
+		if ( null === $self || ! $this->identity->isActive() ) {
+			return null;
+		}
+		$packager = new Packager( $self );
+		return new PushPreview(
+			$self,
+			$this->registry,
+			$this->sisters()->transport(),
+			self::PACKAGE_FORMAT,
+			array( $packager, 'build' ),
+			function ( int $id ): array {
+				$post = get_post( $id );
+				return $post instanceof \WP_Post ? $this->postScanner()->scan( $post ) : array();
+			},
+			array( Packager::class, 'parse' ),
+			array( Packager::class, 'serialize' )
 		);
 	}
 
