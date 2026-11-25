@@ -123,6 +123,8 @@ final class Packager {
 			'featured'       => (int) get_post_thumbnail_id( $post ),
 			'author_email'   => $author ? (string) $author->user_email : '',
 			'author_name'    => $author ? (string) $author->display_name : '',
+			// Every taxonomy the post can have, so a term removed here is removed there.
+			'taxonomies'     => array_values( get_object_taxonomies( $post->post_type ) ),
 		);
 	}
 

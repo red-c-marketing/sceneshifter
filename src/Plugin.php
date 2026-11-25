@@ -43,9 +43,16 @@ use RedC\Sceneshifter\SyncMap\InventoryCache;
 use RedC\Sceneshifter\SyncMap\SyncMap;
 use RedC\Sceneshifter\SyncMap\Uuid;
 use RedC\Sceneshifter\SyncMap\WpContentIndex;
+use RedC\Sceneshifter\Transfer\DbSnapshotStore;
+use RedC\Sceneshifter\Transfer\ImportResponder;
+use RedC\Sceneshifter\Transfer\MediaReceiver;
 use RedC\Sceneshifter\Transfer\Packager;
 use RedC\Sceneshifter\Transfer\PreflightResponder;
 use RedC\Sceneshifter\Transfer\PushPreview;
+use RedC\Sceneshifter\Transfer\PushRunner;
+use RedC\Sceneshifter\Transfer\WpMediaFiles;
+use RedC\Sceneshifter\Transfer\WpMediaSource;
+use RedC\Sceneshifter\Transfer\WpPostWriter;
 use RedC\Sceneshifter\Transfer\WpSiteFacts;
 use RedC\Sceneshifter\Transfer\WpTargetLookup;
 use RedC\Sceneshifter\Transport\SignedEndpoints;
@@ -245,6 +252,78 @@ final class Plugin {
 	}
 
 	/**
+	 * Target side of a push: answers POST /import. Null when inactive.
+	 */
+	public function importResponder(): ?ImportResponder {
+		$syncMap = $this->syncMap();
+		$self    = $this->sisters()->self();
+		if ( null === $syncMap || null === $self ) {
+			return null;
+		}
+		return new ImportResponder(
+			self::PACKAGE_FORMAT,
+			$syncMap->map(),
+			new WpTargetLookup(),
+			new WpSiteFacts( new Packager( $self ) ),
+			new WpPostWriter(),
+			DbSnapshotStore::forSite( $self->id ),
+			fn( int $id ): array => $this->findings( $id )
+		);
+	}
+
+	/**
+	 * Target side of a push: receives media. Null when inactive.
+	 */
+	public function mediaReceiver(): ?MediaReceiver {
+		$syncMap = $this->syncMap();
+		return null === $syncMap ? null : new MediaReceiver( $syncMap->map(), new WpMediaFiles() );
+	}
+
+	/**
+	 * Source side of a push: pushes one post. Null when inactive.
+	 */
+	public function pushRunner(): ?PushRunner {
+		$preview = $this->pushPreview();
+		$self    = $this->sisters()->self();
+		$syncMap = $this->syncMap();
+		if ( null === $preview || null === $self || null === $syncMap ) {
+			return null;
+		}
+		$packager = new Packager( $self );
+		return new PushRunner(
+			$this->registry,
+			$this->sisters()->transport(),
+			self::PACKAGE_FORMAT,
+			$preview,
+			array( $packager, 'build' ),
+			static function ( int $id ): ?string {
+				if ( null === get_post( $id ) ) {
+					return null;
+				}
+				$uuid = get_post_meta( $id, Uuid::META_KEY, true );
+				if ( Uuid::isValid( $uuid ) ) {
+					return $uuid;
+				}
+				$uuid = Uuid::generate();
+				update_post_meta( $id, Uuid::META_KEY, $uuid );
+				return $uuid;
+			},
+			$syncMap->map(),
+			new WpMediaSource()
+		);
+	}
+
+	/**
+	 * Links to other environments in a post.
+	 *
+	 * @return list<\RedC\Sceneshifter\Scanner\Finding>
+	 */
+	public function findings( int $id ): array {
+		$post = get_post( $id );
+		return $post instanceof \WP_Post ? $this->postScanner()->scan( $post ) : array();
+	}
+
+	/**
 	 * Source side of a push: the preview. Null when inactive.
 	 */
 	public function pushPreview(): ?PushPreview {
@@ -259,10 +338,7 @@ final class Plugin {
 			$this->sisters()->transport(),
 			self::PACKAGE_FORMAT,
 			array( $packager, 'build' ),
-			function ( int $id ): array {
-				$post = get_post( $id );
-				return $post instanceof \WP_Post ? $this->postScanner()->scan( $post ) : array();
-			},
+			fn( int $id ): array => $this->findings( $id ),
 			array( Packager::class, 'parse' ),
 			array( Packager::class, 'serialize' )
 		);

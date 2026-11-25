@@ -75,7 +75,7 @@ final class SignedEndpoints {
 				'permission_callback' => array( $this, 'verified' ),
 			)
 		);
-		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link', '/preflight' => 'preflight' ) as $route => $callback ) {
+		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link', '/preflight' => 'preflight', '/import' => 'import', '/media/chunk' => 'mediaChunk', '/media/commit' => 'mediaCommit' ) as $route => $callback ) {
 			register_rest_route(
 				RestController::NAMESPACE,
 				$route,
@@ -184,6 +184,33 @@ final class SignedEndpoints {
 		return $this->signed( $request, $sender, $syncMap->responder()->link( $sender, self::payload( $request ), time() ) );
 	}
 
+	public function import( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender    = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$responder = $this->plugin->importResponder();
+		if ( null === $sender || null === $responder ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $responder->import( $sender, self::payload( $request ) ) );
+	}
+
+	public function mediaChunk( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender   = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$receiver = $this->plugin->mediaReceiver();
+		if ( null === $sender || null === $receiver ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $receiver->chunk( $sender, self::payload( $request ) ) );
+	}
+
+	public function mediaCommit( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender   = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$receiver = $this->plugin->mediaReceiver();
+		if ( null === $sender || null === $receiver ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $receiver->commit( $sender, self::payload( $request ) ) );
+	}
+
 	public function preflight( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$sender    = $this->senders[ spl_object_id( $request ) ] ?? null;
 		$responder = $this->plugin->preflightResponder();
@@ -200,7 +227,7 @@ final class SignedEndpoints {
 	 * @return array<string, mixed>
 	 */
 	private static function payload( WP_REST_Request $request ): array {
-		$data = json_decode( $request->get_body(), true, 64 );
+		$data = json_decode( $request->get_body(), true, 512 );
 		return is_array( $data ) ? $data : array();
 	}
 

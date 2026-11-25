@@ -31,6 +31,11 @@ final class FakeSiteFacts implements SiteFacts {
 	/** @var array<int, Package> The target's own posts, as packages with its IDs. */
 	public array $packages = array();
 
+	/**
+	 * @var array<int, string> Post ID => status; publish when not set.
+	 */
+	public array $statuses = array();
+
 	public function postTypeExists( string $type ): bool {
 		return in_array( $type, $this->postTypes, true );
 	}
@@ -54,7 +59,7 @@ final class FakeSiteFacts implements SiteFacts {
 	public function state( int $id, array $metaKeys ): ?array {
 		$package = $this->packages[ $id ] ?? null;
 		return null === $package ? null : array(
-			'status'   => 'publish',
+			'status'   => $this->statuses[ $id ] ?? 'publish',
 			'title'    => $package->title(),
 			'modified' => '2026-11-20 10:00:00',
 			'parts'    => ContentHash::parts( $package, $metaKeys ),

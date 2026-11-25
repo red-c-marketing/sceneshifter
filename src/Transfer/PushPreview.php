@@ -87,36 +87,17 @@ final class PushPreview {
 			);
 		}
 
-		$result = $this->transport->send(
-			$targetId,
-			'POST',
-			PreflightResponder::ROUTE,
-			array(
-				'format' => $this->format,
-				'items'  => array_map( static fn( Package $p ): array => $p->manifest(), $packages ),
-			)
-		);
-		if ( ! $result->ok() ) {
+		$reply = $this->preflight( $target, $packages );
+		if ( null !== $reply['error'] ) {
 			return array(
-				'error' => $result->message,
-				'items' => array(),
-			);
-		}
-		if ( PreflightResponder::FORMAT_MISMATCH === ( $result->data['error'] ?? null ) ) {
-			return array(
-				'error' => sprintf(
-					/* translators: %s: site name. */
-					__( 'Sceneshifter on %s uses a different package format, so the two can\'t exchange content. Update Sceneshifter on both sites to the same version.', 'sceneshifter' ),
-					$target->label
-				),
+				'error' => $reply['error'],
 				'items' => array(),
 			);
 		}
 
-		$answers = is_array( $result->data['items'] ?? null ) ? array_values( $result->data['items'] ) : array();
-		$items   = array();
+		$items = array();
 		foreach ( $packages as $i => $package ) {
-			$answer  = is_array( $answers[ $i ] ?? null ) ? $answers[ $i ] : null;
+			$answer  = $reply['answers'][ $i ] ?? null;
 			$items[] = null === $answer
 				? new PreviewItem( $package, error: __( 'The other site didn\'t answer for this post.', 'sceneshifter' ) )
 				: $this->item( $package, $answer, $target );
@@ -128,18 +109,76 @@ final class PushPreview {
 	}
 
 	/**
-	 * @param array<string, mixed> $answer One item of the preflight reply.
+	 * Asks the target to resolve the packages' references (POST /preflight).
+	 *
+	 * @param list<Package> $packages At most PreflightResponder::MAX_ITEMS.
+	 * @return array{error: string|null, answers: list<array<string, mixed>|null>} One answer per package, in order.
 	 */
-	private function item( Package $package, array $answer, Site $target ): PreviewItem {
+	public function preflight( Site $target, array $packages ): array {
+		if ( null === $this->transport ) {
+			return array(
+				'error'   => __( 'Sceneshifter is inactive on this site.', 'sceneshifter' ),
+				'answers' => array(),
+			);
+		}
+		$result = $this->transport->send(
+			$target->id,
+			'POST',
+			PreflightResponder::ROUTE,
+			array(
+				'format' => $this->format,
+				'items'  => array_map( static fn( Package $p ): array => $p->manifest(), $packages ),
+			)
+		);
+		if ( ! $result->ok() ) {
+			return array(
+				'error'   => $result->message,
+				'answers' => array(),
+			);
+		}
+		if ( PreflightResponder::FORMAT_MISMATCH === ( $result->data['error'] ?? null ) ) {
+			return array(
+				'error'   => self::formatMismatch( $target ),
+				'answers' => array(),
+			);
+		}
+		$answers = is_array( $result->data['items'] ?? null ) ? array_values( $result->data['items'] ) : array();
+		$out     = array();
+		foreach ( array_keys( $packages ) as $i ) {
+			$out[] = is_array( $answers[ $i ] ?? null ) ? $answers[ $i ] : null;
+		}
+		return array(
+			'error'   => null,
+			'answers' => $out,
+		);
+	}
+
+	public static function formatMismatch( Site $target ): string {
+		return sprintf(
+			/* translators: %s: site name. */
+			__( 'Sceneshifter on %s uses a different package format, so the two can\'t exchange content. Update Sceneshifter on both sites to the same version.', 'sceneshifter' ),
+			$target->label
+		);
+	}
+
+	/**
+	 * Rewrites a package with the target's answers and compares it with
+	 * what the target has.
+	 *
+	 * @param array<string, mixed> $answer    One item of the preflight reply.
+	 * @param array<int, int>      $uploaded  Media copied to the target since the preflight: source ID => target ID.
+	 * @param bool                 $writing   For the real push: IDs with no match become 0.
+	 */
+	public function item( Package $package, array $answer, Site $target, array $uploaded = array(), bool $writing = false ): PreviewItem {
 		$posts       = self::matches( $answer['posts'] ?? null );
-		$attachments = self::matches( $answer['attachments'] ?? null );
+		$attachments = $uploaded + self::matches( $answer['attachments'] ?? null );
 		$terms       = self::matches( $answer['term_refs'] ?? null );
 		$targetPost  = is_array( $answer['target'] ?? null ) && is_int( $answer['target']['id'] ?? null ) ? $answer['target'] : null;
 		if ( null !== $targetPost ) {
 			$posts[ $package->id ] = $targetPost['id'];
 		}
 
-		$rewriter  = new PackageRewriter( new UrlRewriter( $this->self, $target ), new IdMap( $attachments, $posts, $terms ), $this->parse, $this->serialize );
+		$rewriter  = new PackageRewriter( new UrlRewriter( $this->self, $target ), $writing ? ( new IdMap( $attachments, $posts, $terms ) )->clearingMissing() : new IdMap( $attachments, $posts, $terms ), $this->parse, $this->serialize );
 		$result    = $rewriter->rewrite( $package );
 		$rewritten = $result['package'];
 

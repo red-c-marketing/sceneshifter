@@ -229,7 +229,10 @@ final class BlockRewriter {
 		$mapped = $this->ids->get( $kind, $id );
 		if ( null === $mapped ) {
 			$this->unresolved[] = new Unresolved( $kind, $id, $location );
-			return $value;
+			if ( ! $this->ids->clearMissing ) {
+				return $value;
+			}
+			$mapped = 0;
 		}
 		if ( $mapped !== $id ) {
 			$this->rewrites[] = new Rewrite( $kind, $location, (string) $id, (string) $mapped );
@@ -246,15 +249,7 @@ final class BlockRewriter {
 			'~(\bwp-image-)(\d+)\b|(<img\b[^>]*\bdata-id=["\'])(\d+)(["\'])~i',
 			function ( array $m ) use ( $location, &$scratch ): string {
 				$isClass = '' !== $m[1];
-				$id      = (int) ( $isClass ? $m[2] : $m[4] );
-				$mapped  = $this->ids->get( Rewrite::ATTACHMENT, $id );
-				if ( null === $mapped ) {
-					$scratch[] = new Unresolved( Rewrite::ATTACHMENT, $id, $location );
-					return $m[0];
-				}
-				if ( $mapped !== $id ) {
-					$scratch[] = new Rewrite( Rewrite::ATTACHMENT, $location, (string) $id, (string) $mapped );
-				}
+				$mapped  = $this->mapOne( Rewrite::ATTACHMENT, (int) ( $isClass ? $m[2] : $m[4] ), $location, $scratch );
 				return $isClass ? $m[1] . $mapped : $m[3] . $mapped . $m[5];
 			},
 			$html
@@ -268,8 +263,10 @@ final class BlockRewriter {
 					$ids = array();
 					foreach ( explode( ',', $m[2] ) as $raw ) {
 						$id = (int) trim( $raw );
-						if ( $id > 0 ) {
-							$ids[] = (string) $this->mapOne( Rewrite::ATTACHMENT, $id, $location, $scratch );
+						$mapped = $id > 0 ? $this->mapOne( Rewrite::ATTACHMENT, $id, $location, $scratch ) : 0;
+						if ( $mapped > 0 ) {
+							// A gallery skips images it can't find rather than show a gap.
+							$ids[] = (string) $mapped;
 						}
 					}
 					return $m[1] . implode( ',', $ids ) . $m[3];
@@ -300,7 +297,7 @@ final class BlockRewriter {
 		$mapped = $this->ids->get( $kind, $id );
 		if ( null === $mapped ) {
 			$scratch[] = new Unresolved( $kind, $id, $location );
-			return $id;
+			return $this->ids->clearMissing ? 0 : $id;
 		}
 		if ( $mapped !== $id ) {
 			$scratch[] = new Rewrite( $kind, $location, (string) $id, (string) $mapped );

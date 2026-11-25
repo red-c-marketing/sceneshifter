@@ -15,6 +15,9 @@ use RedC\Sceneshifter\SyncMap\InventoryCache;
 use RedC\Sceneshifter\SyncMap\LinkExisting;
 use RedC\Sceneshifter\SyncMap\MemoryMapStore;
 use RedC\Sceneshifter\SyncMap\Responder;
+use RedC\Sceneshifter\Transfer\ImportResponder;
+use RedC\Sceneshifter\Transfer\MediaReceiver;
+use RedC\Sceneshifter\Transfer\MemorySnapshotStore;
 use RedC\Sceneshifter\Transfer\PreflightResponder;
 
 /**
@@ -31,7 +34,16 @@ final class SisterHarness {
 	public MemoryMapStore $map;
 	public MemoryTargetLookup $lookup;
 	public FakeSiteFacts $facts;
+	public MemoryPostWriter $writer;
+	public MemorySnapshotStore $snapshots;
+	public MemoryMediaFiles $mediaFiles;
 	private Registry $registry;
+
+	/** @var array<int, list<\RedC\Sceneshifter\Scanner\Finding>> Links to other environments found in a written post. */
+	public array $findings = array();
+
+	/** @var list<string> Routes this site answered, in order. */
+	public array $served = array();
 
 	/** @var array<string, self> by host */
 	public static array $network = array();
@@ -52,6 +64,9 @@ final class SisterHarness {
 		$this->map     = new MemoryMapStore();
 		$this->lookup  = new MemoryTargetLookup();
 		$this->facts   = new FakeSiteFacts();
+		$this->writer     = new MemoryPostWriter( $this->facts, $this->lookup );
+		$this->snapshots  = new MemorySnapshotStore();
+		$this->mediaFiles = new MemoryMediaFiles();
 		$this->boot( $registry, $active );
 		$site = $registry->get( $siteId );
 		if ( null !== $site ) {
@@ -118,6 +133,16 @@ final class SisterHarness {
 		if ( Responder::INVENTORY_ROUTE === $route && 'POST' === $method ) {
 			return $this->signed( $headers, $sender, $this->responder()->inventory( (array) json_decode( $body, true ) ) );
 		}
+		$this->served[] = $route;
+		if ( ImportResponder::ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->importer()->import( $sender, (array) json_decode( $body, true ) ) );
+		}
+		if ( MediaReceiver::CHUNK_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->receiver()->chunk( $sender, (array) json_decode( $body, true ) ) );
+		}
+		if ( MediaReceiver::COMMIT_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->receiver()->commit( $sender, (array) json_decode( $body, true ) ) );
+		}
 		if ( PreflightResponder::ROUTE === $route && 'POST' === $method ) {
 			$responder = new PreflightResponder( '1', $this->map, $this->lookup, $this->facts );
 			return $this->signed( $headers, $sender, $responder->preflight( $sender, (array) json_decode( $body, true ) ) );
@@ -134,6 +159,14 @@ final class SisterHarness {
 
 	public function responder(): Responder {
 		return new Responder( $this->content, $this->map );
+	}
+
+	public function importer(): ImportResponder {
+		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000 );
+	}
+
+	public function receiver(): MediaReceiver {
+		return new MediaReceiver( $this->map, $this->mediaFiles, static fn(): int => 1700000000 );
 	}
 
 	public function linker(): LinkExisting {
