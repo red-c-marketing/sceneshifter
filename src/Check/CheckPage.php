@@ -40,7 +40,7 @@ final class CheckPage {
 		);
 		add_submenu_page(
 			self::SLUG,
-			__( 'Check sister links', 'sceneshifter' ),
+			__( 'Check environment links', 'sceneshifter' ),
 			__( 'Check', 'sceneshifter' ),
 			'edit_posts',
 			self::SLUG,
@@ -69,7 +69,7 @@ final class CheckPage {
 		$site = $this->plugin->identity()->site;
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Check sister links', 'sceneshifter' ); ?></h1>
+			<h1><?php esc_html_e( 'Check environment links', 'sceneshifter' ); ?></h1>
 			<p>
 				<?php
 				printf(
@@ -117,7 +117,7 @@ final class CheckPage {
 			);
 		}
 		?>
-		<p><?php esc_html_e( 'To check particular posts, open one of the lists below. Use "Check sister links" under a post\'s title, or tick several and choose "Check sister links" from Bulk actions. The results appear on this page.', 'sceneshifter' ); ?></p>
+		<p><?php esc_html_e( 'To check particular posts, open one of the lists below. Use "Check environment links" under a post\'s title, or tick several and choose "Check environment links" from Bulk actions. The results appear on this page.', 'sceneshifter' ); ?></p>
 		<?php if ( array() !== $links ) : ?>
 			<ul class="ul-disc">
 				<?php foreach ( $links as $link ) : ?>
@@ -153,7 +153,7 @@ final class CheckPage {
 			<span style="font-weight:normal;font-size:13px;">
 				<?php
 				if ( array() === $findings ) {
-					esc_html_e( 'No sister links found.', 'sceneshifter' );
+					esc_html_e( 'No links to other environments found.', 'sceneshifter' );
 				} else {
 					printf(
 						/* translators: 1: number of errors, 2: number of warnings. */

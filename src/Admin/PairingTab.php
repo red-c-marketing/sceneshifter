@@ -419,7 +419,7 @@ final class PairingTab {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-sceneshifter-confirm="<?php esc_attr_e( 'Make a new key? Every pairing on this site is removed, and you\'ll need to pair it again with each site.', 'sceneshifter' ); ?>">
 			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_NEW_KEY ); ?>">
 			<?php wp_nonce_field( self::ACTION_NEW_KEY ); ?>
-			<p class="description"><?php esc_html_e( 'Making a new key removes every pairing on this site. The sisters still list this site as paired until you unpair it there or pair again.', 'sceneshifter' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Making a new key removes every pairing on this site. The other environments still list this site as paired until you unpair it there or pair again.', 'sceneshifter' ); ?></p>
 			<?php submit_button( __( 'Make a new key', 'sceneshifter' ), 'primary', 'submit', false ); ?>
 		</form>
 		<?php

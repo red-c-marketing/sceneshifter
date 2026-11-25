@@ -1,6 +1,6 @@
 <?php
 /**
- * The findings table on the Sister references report.
+ * The findings table on the Environment links report.
  *
  * @package RedC\Sceneshifter
  */
@@ -79,7 +79,7 @@ final class ReportTable extends \WP_List_Table {
 	}
 
 	public function no_items(): void {
-		esc_html_e( 'No sister links found.', 'sceneshifter' );
+		esc_html_e( 'No links to other environments found.', 'sceneshifter' );
 	}
 
 	/**
@@ -93,9 +93,9 @@ final class ReportTable extends \WP_List_Table {
 		}
 		?>
 		<div class="alignleft actions">
-			<label class="screen-reader-text" for="sceneshifter-filter-sister"><?php esc_html_e( 'Filter by sister site', 'sceneshifter' ); ?></label>
+			<label class="screen-reader-text" for="sceneshifter-filter-sister"><?php esc_html_e( 'Filter by environment', 'sceneshifter' ); ?></label>
 			<select name="sister" id="sceneshifter-filter-sister">
-				<option value=""><?php esc_html_e( 'All sister sites', 'sceneshifter' ); ?></option>
+				<option value=""><?php esc_html_e( 'All environments', 'sceneshifter' ); ?></option>
 				<?php foreach ( $this->store->distinctSisters( $this->scanId ) as $id ) : ?>
 					<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $this->filters->sister, $id ); ?>><?php echo esc_html( $this->registry->get( $id )->label ?? $id ); ?></option>
 				<?php endforeach; ?>

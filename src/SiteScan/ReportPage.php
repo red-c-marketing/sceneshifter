@@ -39,7 +39,7 @@ final class ReportPage {
 	public function addMenu(): void {
 		add_submenu_page(
 			CheckPage::SLUG,
-			__( 'Sister references report', 'sceneshifter' ),
+			__( 'Environment links report', 'sceneshifter' ),
 			__( 'Report', 'sceneshifter' ),
 			Plugin::CAP_VIEW,
 			self::SLUG,
@@ -80,7 +80,7 @@ final class ReportPage {
 		$canStart = current_user_can( 'manage_options' );
 		?>
 		<div class="wrap">
-			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sister references report', 'sceneshifter' ); ?></h1>
+			<h1 class="wp-heading-inline"><?php esc_html_e( 'Environment links report', 'sceneshifter' ); ?></h1>
 			<hr class="wp-header-end">
 
 			<p><?php esc_html_e( 'Every link and image on this site that points at another environment. Covers the enabled content types, synced patterns, templates and navigation, plus menu custom links, widgets, ACF options pages and theme settings.', 'sceneshifter' ); ?></p>
@@ -151,11 +151,13 @@ final class ReportPage {
 		<h2>
 			<?php
 			if ( 0 === $summary['objects'] ) {
-				esc_html_e( 'No sister links found.', 'sceneshifter' );
+				esc_html_e( 'No links to other environments found.', 'sceneshifter' );
 			} else {
 				printf(
-					/* translators: 1: number of items, 2: errors, 3: warnings. */
-					esc_html__( '%1$d items with sister links: %2$d errors, %3$d warnings', 'sceneshifter' ),
+					esc_html(
+						/* translators: 1: number of items, 2: errors, 3: warnings. */
+						_n( '%1$d item links to other environments: %2$d errors, %3$d warnings', '%1$d items link to other environments: %2$d errors, %3$d warnings', (int) $summary['objects'], 'sceneshifter' )
+					),
 					(int) $summary['objects'],
 					(int) $summary[ Finding::ERROR ],
 					(int) $summary[ Finding::WARNING ]
@@ -234,7 +236,7 @@ final class ReportPage {
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="sister-references-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="environment-links-' . gmdate( 'Y-m-d' ) . '.csv"' );
 
 		$out = fopen( 'php://output', 'w' );
 		if ( false === $out ) {

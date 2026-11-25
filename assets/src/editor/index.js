@@ -90,7 +90,10 @@ function Summary( { counts } ) {
 	if ( total === 0 ) {
 		return (
 			<Notice status="success" isDismissible={ false }>
-				{ __( 'No sister links found.', 'sceneshifter' ) }
+				{ __(
+					'No links to other environments found.',
+					'sceneshifter'
+				) }
 			</Notice>
 		);
 	}

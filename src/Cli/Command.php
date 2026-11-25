@@ -261,7 +261,7 @@ final class Command {
 			$summary = $store->summary( $state->id );
 			WP_CLI::success(
 				sprintf(
-					'Saved. %d posts scanned; %d items with sister links (%d errors, %d warnings).',
+					'Saved. %d posts scanned; %d items link to other environments (%d errors, %d warnings).',
 					$state->processed,
 					$summary['objects'],
 					$summary['error'],
@@ -276,7 +276,7 @@ final class Command {
 	 */
 	private function output( array $rows, string $format ): void {
 		if ( array() === $rows && 'table' === $format ) {
-			WP_CLI::success( 'No sister links found.' );
+			WP_CLI::success( 'No links to other environments found.' );
 			return;
 		}
 		Utils\format_items( $format, $rows, self::FIELDS );

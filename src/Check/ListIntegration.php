@@ -1,6 +1,6 @@
 <?php
 /**
- * "Check sister links" row action and bulk action on enabled list screens.
+ * "Check environment links" row action and bulk action on enabled list screens.
  *
  * @package RedC\Sceneshifter
  */
@@ -36,7 +36,7 @@ final class ListIntegration {
 	 * @return array<string, string>
 	 */
 	public function addBulkAction( array $actions ): array {
-		$actions[ self::BULK_ACTION ] = __( 'Check sister links', 'sceneshifter' );
+		$actions[ self::BULK_ACTION ] = __( 'Check environment links', 'sceneshifter' );
 		return $actions;
 	}
 
@@ -61,7 +61,7 @@ final class ListIntegration {
 		$actions['sceneshifter_check'] = sprintf(
 			'<a href="%s">%s</a>',
 			esc_url( CheckPage::url( array( $post->ID ) ) ),
-			esc_html__( 'Check sister links', 'sceneshifter' )
+			esc_html__( 'Check environment links', 'sceneshifter' )
 		);
 		return $actions;
 	}

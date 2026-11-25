@@ -1,6 +1,6 @@
 <?php
 /**
- * A "Sister links" column on enabled list screens, showing counts from the
+ * An "Environment links" column on enabled list screens, showing counts from the
  * last completed site scan.
  *
  * @package RedC\Sceneshifter
@@ -49,7 +49,7 @@ final class ListColumn {
 	 * @return array<string, string>
 	 */
 	public function addColumn( array $columns ): array {
-		$columns[ self::COLUMN ] = __( 'Sister links', 'sceneshifter' );
+		$columns[ self::COLUMN ] = __( 'Environment links', 'sceneshifter' );
 		return $columns;
 	}
 

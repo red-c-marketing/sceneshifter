@@ -36,7 +36,7 @@
 		results.replaceChildren();
 
 		if ( ! data.findings.length ) {
-			results.appendChild( el( 'p', {}, __( 'No sister links found.', 'sceneshifter' ) ) );
+			results.appendChild( el( 'p', {}, __( 'No links to other environments found.', 'sceneshifter' ) ) );
 			return;
 		}
 
