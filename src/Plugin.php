@@ -60,6 +60,16 @@ final class Plugin {
 		$this->options = new Options();
 	}
 
+	/**
+	 * Version string for a file under assets/: its modification time, so a
+	 * deploy that changes the file also changes its URL and browsers don't
+	 * keep the old copy. Falls back to the plugin version.
+	 */
+	public static function assetVersion( string $relativePath ): string {
+		$mtime = @filemtime( SISTER_SYNC_DIR . $relativePath ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return false === $mtime ? SISTER_SYNC_VERSION : SISTER_SYNC_VERSION . '.' . $mtime;
+	}
+
 	public static function activate(): void {
 		self::grantCapabilities();
 		Schema::install();

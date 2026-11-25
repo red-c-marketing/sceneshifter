@@ -65,7 +65,7 @@ final class ReportPage {
 		if ( ! str_ends_with( $hook, '_page_' . self::SLUG ) ) {
 			return;
 		}
-		wp_enqueue_script( 'sister-sync-report', SISTER_SYNC_URL . 'assets/report.js', array( 'wp-api-fetch', 'wp-i18n' ), SISTER_SYNC_VERSION, true );
+		wp_enqueue_script( 'sister-sync-report', SISTER_SYNC_URL . 'assets/report.js', array( 'wp-api-fetch', 'wp-i18n' ), Plugin::assetVersion( 'assets/report.js' ), true );
 		wp_set_script_translations( 'sister-sync-report', 'sister-sync' );
 	}
 

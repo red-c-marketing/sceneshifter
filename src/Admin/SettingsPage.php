@@ -66,8 +66,8 @@ final class SettingsPage {
 		if ( ! str_ends_with( $hook, '_page_' . self::SLUG ) ) {
 			return;
 		}
-		wp_enqueue_style( 'sister-sync-settings', SISTER_SYNC_URL . 'assets/settings.css', array(), SISTER_SYNC_VERSION );
-		wp_enqueue_script( 'sister-sync-settings', SISTER_SYNC_URL . 'assets/settings.js', array(), SISTER_SYNC_VERSION, true );
+		wp_enqueue_style( 'sister-sync-settings', SISTER_SYNC_URL . 'assets/settings.css', array(), Plugin::assetVersion( 'assets/settings.css' ) );
+		wp_enqueue_script( 'sister-sync-settings', SISTER_SYNC_URL . 'assets/settings.js', array(), Plugin::assetVersion( 'assets/settings.js' ), true );
 	}
 
 	public function render(): void {

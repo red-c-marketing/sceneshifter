@@ -50,7 +50,7 @@ final class EditorAssets {
 			'sister-sync-editor',
 			SISTER_SYNC_URL . 'assets/editor.css',
 			array(),
-			SISTER_SYNC_VERSION
+			Plugin::assetVersion( 'assets/editor.css' )
 		);
 	}
 }

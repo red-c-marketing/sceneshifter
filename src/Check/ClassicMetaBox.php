@@ -59,7 +59,7 @@ final class ClassicMetaBox {
 			'sister-sync-classic',
 			SISTER_SYNC_URL . 'assets/classic-check.js',
 			array( 'wp-api-fetch', 'wp-i18n' ),
-			SISTER_SYNC_VERSION,
+			Plugin::assetVersion( 'assets/classic-check.js' ),
 			true
 		);
 		wp_set_script_translations( 'sister-sync-classic', 'sister-sync' );

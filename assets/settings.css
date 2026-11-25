@@ -205,3 +205,12 @@
 		max-width: none;
 	}
 }
+
+/* Check tab: one content type per line. */
+.sister-sync-post-types {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 8px 0 16px;
+}

@@ -45,7 +45,7 @@ final class CheckSettingsTab {
 
 			<h2><?php esc_html_e( 'Content types', 'sister-sync' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'Check (and later Push and Pull) appear on these content types, and the site scan covers them.', 'sister-sync' ); ?></p>
-			<fieldset>
+			<fieldset class="sister-sync-post-types">
 				<legend class="screen-reader-text"><?php esc_html_e( 'Content types', 'sister-sync' ); ?></legend>
 				<?php foreach ( $postTypes as $type ) : ?>
 					<?php
