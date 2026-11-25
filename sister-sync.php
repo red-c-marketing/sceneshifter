@@ -54,9 +54,23 @@ if ( ! defined( 'SISTER_SYNC_URL' ) ) {
 // Action Scheduler runs the background site scan. It must be loaded while
 // plugins load; when several plugins bundle it, the newest copy wins. Without
 // it the scan still runs, but only while the report page is open.
-if ( is_readable( SISTER_SYNC_DIR . 'vendor/woocommerce/action-scheduler/action-scheduler.php' ) ) {
-	require_once SISTER_SYNC_DIR . 'vendor/woocommerce/action-scheduler/action-scheduler.php';
-}
+//
+// Our own vendor directory has it in development. When a site installs this
+// plugin with Composer (Bedrock), the site's Composer puts Action Scheduler
+// wherever its installer paths say, usually as an inactive plugin, so ask
+// Composer where that is.
+( static function (): void {
+	$candidates = array( SISTER_SYNC_DIR . 'vendor/woocommerce/action-scheduler' );
+	if ( class_exists( \Composer\InstalledVersions::class ) && \Composer\InstalledVersions::isInstalled( 'woocommerce/action-scheduler' ) ) {
+		$candidates[] = (string) \Composer\InstalledVersions::getInstallPath( 'woocommerce/action-scheduler' );
+	}
+	foreach ( $candidates as $dir ) {
+		if ( '' !== $dir && is_readable( $dir . '/action-scheduler.php' ) ) {
+			require_once $dir . '/action-scheduler.php';
+			return;
+		}
+	}
+} )();
 
 register_activation_hook( __FILE__, array( \RedC\SisterSync\Plugin::class, 'activate' ) );
 

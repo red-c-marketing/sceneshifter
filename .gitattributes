@@ -1,0 +1,12 @@
+# Keep the Composer/GitHub download to what WordPress runs.
+/.github           export-ignore
+/tests             export-ignore
+/assets/src        export-ignore
+/.gitattributes    export-ignore
+/.gitignore        export-ignore
+/.yarnrc.yml       export-ignore
+/eslint.config.cjs export-ignore
+/package.json      export-ignore
+/yarn.lock         export-ignore
+/phpstan.neon.dist export-ignore
+/phpunit.xml.dist  export-ignore

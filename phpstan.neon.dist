@@ -12,9 +12,3 @@ parameters:
         - vendor/woocommerce/action-scheduler/functions.php
     scanDirectories:
         - vendor/woocommerce/action-scheduler/classes
-    ignoreErrors:
-        # build/ is produced by `yarn build` and is not committed.
-        -
-            identifier: require.fileNotFound
-            path: src/Check/EditorAssets.php
-            reportUnmatched: false
