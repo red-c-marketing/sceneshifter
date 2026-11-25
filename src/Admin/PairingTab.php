@@ -32,6 +32,7 @@ final class PairingTab {
 	public const ACTION_NEW_KEY = 'sceneshifter_new_key';
 	public const ACTION_DEV     = 'sceneshifter_pair_dev';
 	public const AJAX_STATUS    = 'sceneshifter_pairing_status';
+	public const AJAX_ROWS      = 'sceneshifter_pairing_rows';
 
 	public function __construct( private readonly Plugin $plugin ) {}
 
@@ -40,6 +41,7 @@ final class PairingTab {
 			add_action( 'admin_post_' . $action, array( $this, 'handle' ) );
 		}
 		add_action( 'wp_ajax_' . self::AJAX_STATUS, array( $this, 'ajaxStatus' ) );
+		add_action( 'wp_ajax_' . self::AJAX_ROWS, array( $this, 'ajaxRows' ) );
 	}
 
 	/**
@@ -132,10 +134,14 @@ final class PairingTab {
 						<th scope="col"><?php esc_html_e( 'Actions', 'sceneshifter' ); ?></th>
 					</tr>
 				</thead>
-				<tbody>
-					<?php foreach ( $others as $site ) : ?>
-						<?php $this->renderRow( $self, $site, $sisters->pairings()->get( $site->id ) ); ?>
-					<?php endforeach; ?>
+				<?php $rows = $this->rows( $self, $others ); ?>
+				<tbody
+					data-sceneshifter-pairing-rows
+					data-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>"
+					data-action="<?php echo esc_attr( self::AJAX_ROWS ); ?>"
+					data-nonce="<?php echo esc_attr( wp_create_nonce( self::AJAX_ROWS ) ); ?>"
+					data-hash="<?php echo esc_attr( $rows['hash'] ); ?>">
+					<?php echo $rows['html']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in renderRow(). ?>
 				</tbody>
 			</table>
 		<?php endif; ?>
@@ -168,6 +174,46 @@ final class PairingTab {
 			</form>
 		</details>
 		<?php
+	}
+
+	/**
+	 * The table rows, and a hash of what they show, so the open page can
+	 * tell when the other site has paired or unpaired.
+	 *
+	 * @param list<Site> $others
+	 * @return array{hash: string, html: string}
+	 */
+	private function rows( Site $self, array $others ): array {
+		$pairings = $this->plugin->sisters()->pairings();
+		$state    = array( $self->id, $this->plugin->registry()->version );
+		ob_start();
+		foreach ( $others as $site ) {
+			$pairing = $pairings->get( $site->id );
+			$state[] = array( $site->id, $site->isPublic, $pairing?->toArray() );
+			$this->renderRow( $self, $site, $pairing );
+		}
+		return array(
+			'hash' => md5( (string) wp_json_encode( $state ) ),
+			'html' => (string) ob_get_clean(),
+		);
+	}
+
+	/**
+	 * Polled by the open Pairing tab. Sends fresh rows only when they changed.
+	 */
+	public function ajaxRows(): void {
+		check_ajax_referer( self::AJAX_ROWS );
+		if ( ! self::canManage() ) {
+			wp_send_json_error( null, 403 );
+		}
+		$self = $this->plugin->sisters()->self();
+		if ( null === $self ) {
+			wp_send_json_error( null, 409 );
+		}
+		$others = array_values( array_filter( $this->plugin->registry()->sites(), static fn( Site $s ): bool => $s->id !== $self->id ) );
+		$rows   = $this->rows( $self, $others );
+		$known  = isset( $_GET['hash'] ) ? sanitize_key( wp_unslash( $_GET['hash'] ) ) : '';
+		wp_send_json_success( $known === $rows['hash'] ? array( 'hash' => $rows['hash'] ) : $rows );
 	}
 
 	private function renderRow( Site $self, Site $site, ?Pairing $pairing ): void {
@@ -214,7 +260,20 @@ final class PairingTab {
 			<td data-label="<?php esc_attr_e( 'Actions', 'sceneshifter' ); ?>" class="sceneshifter-pair-actions">
 				<?php if ( null !== $pairing ) : ?>
 					<?php
-					self::actionButton( self::ACTION_TEST, $site->id, __( 'Test connection', 'sceneshifter' ) );
+					if ( $site->isPublic ) {
+						self::actionButton( self::ACTION_TEST, $site->id, __( 'Test connection', 'sceneshifter' ) );
+						echo '<a class="button" href="' . esc_url( LinkTab::url( array( 'sister' => $site->id ) ) ) . '">' . esc_html__( 'Link existing content', 'sceneshifter' ) . '</a>';
+					}
+					?>
+					<?php if ( ! $site->isPublic ) : ?>
+						<p class="description">
+							<?php
+							/* translators: %s: site name. */
+							echo esc_html( sprintf( __( 'To test the connection, use Test connection on %s. This site can\'t contact it.', 'sceneshifter' ), $site->label ) );
+							?>
+						</p>
+					<?php endif; ?>
+					<?php
 					self::actionButton(
 						self::ACTION_UNPAIR,
 						$site->id,

@@ -5,6 +5,8 @@
  *   POST /wp-json/sceneshifter/v1/pair    Pairing confirmation (see Handshake).
  *   GET  /wp-json/sceneshifter/v1/status  Site ID, versions, and that the caller is paired.
  *   POST /wp-json/sceneshifter/v1/unpair  The caller asks this site to forget it.
+ *   POST /wp-json/sceneshifter/v1/map/inventory  One page of posts, for Link existing content.
+ *   POST /wp-json/sceneshifter/v1/map/link       Link posts here to the caller's posts.
  *
  * Every request is checked before anything else runs. Anything that fails,
  * including any request while this site is inactive or has no usable key,
@@ -72,6 +74,17 @@ final class SignedEndpoints {
 				'permission_callback' => array( $this, 'verified' ),
 			)
 		);
+		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link' ) as $route => $callback ) {
+			register_rest_route(
+				RestController::NAMESPACE,
+				$route,
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, $callback ),
+					'permission_callback' => array( $this, 'verified' ),
+				)
+			);
+		}
 		register_rest_route(
 			RestController::NAMESPACE,
 			'/unpair',
@@ -150,6 +163,35 @@ final class SignedEndpoints {
 		}
 		$this->plugin->sisters()->pairings()->remove( $sender );
 		return $this->signed( $request, $sender, array( 'unpaired' => true ) );
+	}
+
+	public function inventory( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender  = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$syncMap = $this->plugin->syncMap();
+		if ( null === $sender || null === $syncMap ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $syncMap->responder()->inventory( self::payload( $request ) ) );
+	}
+
+	public function link( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender  = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$syncMap = $this->plugin->syncMap();
+		if ( null === $sender || null === $syncMap ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $syncMap->responder()->link( $sender, self::payload( $request ), time() ) );
+	}
+
+	/**
+	 * The JSON body that was signed. Read from the raw body, not the
+	 * parsed parameters, so query arguments can't be mixed in.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function payload( WP_REST_Request $request ): array {
+		$data = json_decode( $request->get_body(), true, 16 );
+		return is_array( $data ) ? $data : array();
 	}
 
 	/**

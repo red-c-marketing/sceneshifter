@@ -71,14 +71,23 @@ final class TransportTest extends TestCase {
 	}
 
 	public function test_refuses_plain_http_unless_the_dev_setting_allows_local_hosts(): void {
-		$strict = $this->transport( $this->answer( array() ) )->send( 'dev', 'GET', self::ROUTE );
+		$strict = $this->transport( $this->answer( array() ), false, true )->send( 'dev', 'GET', self::ROUTE );
 		$this->assertSame( TransportResult::INSECURE_URL, $strict->code );
 		$this->assertStringContainsString( 'Local development', $strict->message );
 		$this->assertSame( array(), $this->calls, 'Nothing was sent.' );
 
-		$dev = $this->transport( $this->answer( array( 'site' => 'dev' ) ), true )->send( 'dev', 'GET', self::ROUTE );
+		$dev = $this->transport( $this->answer( array( 'site' => 'dev' ) ), true, true )->send( 'dev', 'GET', self::ROUTE );
 		$this->assertTrue( $dev->ok(), $dev->message );
 		$this->assertSame( 'http://client.test:8080/wp-json/sceneshifter/v1/status', $this->calls[0]['url'] );
+	}
+
+	public function test_sends_nothing_to_a_site_that_is_not_public(): void {
+		$result = $this->transport( $this->answer( array() ), true )->send( 'dev', 'GET', self::ROUTE );
+
+		$this->assertSame( TransportResult::NOT_PUBLIC, $result->code );
+		$this->assertStringContainsString( 'Start from Dev instead', $result->message );
+		$this->assertSame( array(), $this->calls, 'Nothing was sent.' );
+		$this->assertNull( $this->pairings->get( 'dev' )?->lastError, 'Not recorded as a failed contact.' );
 	}
 
 	public function test_refuses_sites_that_are_not_paired_or_not_listed(): void {
@@ -154,12 +163,12 @@ final class TransportTest extends TestCase {
 	/**
 	 * @param callable(string, string, array<string, string>, string): (array{status: int, headers: array<string, string>, body: string}|string) $http
 	 */
-	private function transport( callable $http, bool $allowDevHttp = false ): Transport {
+	private function transport( callable $http, bool $allowDevHttp = false, bool $devPublic = false ): Transport {
 		$ticks = array( self::NOW, self::NOW + 0.12, self::NOW + 0.12 );
 		$clock = static function () use ( &$ticks ): float {
 			return count( $ticks ) > 1 ? array_shift( $ticks ) : $ticks[0];
 		};
-		return new Transport( 'staging', $this->ours, Fixtures::registry(), $this->pairings, new TransportPolicy( $allowDevHttp ), $this->recorder( $http ), $clock );
+		return new Transport( 'staging', $this->ours, Fixtures::registry( $devPublic ), $this->pairings, new TransportPolicy( $allowDevHttp ), $this->recorder( $http ), $clock );
 	}
 
 	/**

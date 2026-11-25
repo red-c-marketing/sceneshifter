@@ -75,6 +75,13 @@ final class Transport {
 			/* translators: %s: site ID. */
 			return new TransportResult( TransportResult::NOT_IN_REGISTRY, sprintf( __( '%s isn\'t in this site\'s list of sites.', 'sceneshifter' ), $siteId ) );
 		}
+		if ( null === $this->keys ) {
+			return self::noKey();
+		}
+		if ( ! $site->isPublic ) {
+			// Not an error to record: the sister calls this site instead.
+			return new TransportResult( TransportResult::NOT_PUBLIC, self::notPublicMessage( $site->label ) );
+		}
 		$pairing = $this->pairings->get( $siteId );
 		if ( null === $pairing ) {
 			/* translators: %s: site name. */
@@ -91,6 +98,21 @@ final class Transport {
 		return $result;
 	}
 
+	private static function noKey(): TransportResult {
+		return new TransportResult( TransportResult::NO_KEY, __( 'This site has no usable key, so it can\'t sign requests. Open Sceneshifter → Settings → Pairing.', 'sceneshifter' ) );
+	}
+
+	/**
+	 * Why nothing can be sent to a sister marked as not public.
+	 */
+	public static function notPublicMessage( string $label ): string {
+		return sprintf(
+			/* translators: %1$s: site name. */
+			__( '%1$s isn\'t public, so this site can\'t contact it. Start from %1$s instead: it can contact this site.', 'sceneshifter' ),
+			$label
+		);
+	}
+
 	/**
 	 * Sends a signed request and checks the reply against a public key the
 	 * caller already trusts. Used directly only while pairing, before the
@@ -101,7 +123,7 @@ final class Transport {
 	public function sendWithKey( Site $site, string $peerKey, string $method, string $route, ?array $payload = null ): TransportResult {
 		$method = strtoupper( $method );
 		if ( null === $this->keys ) {
-			return new TransportResult( TransportResult::NO_KEY, __( 'This site has no usable key, so it can\'t sign requests. Open Sceneshifter → Settings → Pairing.', 'sceneshifter' ) );
+			return self::noKey();
 		}
 
 		$url = self::url( $site, $route );

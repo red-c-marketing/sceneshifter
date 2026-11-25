@@ -38,6 +38,7 @@ final class SettingsPage {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		( new CheckSettingsTab( $this->plugin ) )->register();
 		( new PairingTab( $this->plugin ) )->register();
+		( new LinkTab( $this->plugin ) )->register();
 	}
 
 	public function addMenu(): void {
@@ -84,7 +85,17 @@ final class SettingsPage {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- choosing a tab only.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
-		$tab = in_array( $tab, array( 'check', 'pairing' ), true ) ? $tab : 'sites';
+		$tab = in_array( $tab, array( 'check', 'pairing', 'link' ), true ) ? $tab : 'sites';
+		if ( 'link' === $tab && PairingTab::canManage() ) {
+			?>
+			<div class="wrap sceneshifter-settings">
+				<h1><?php esc_html_e( 'Sceneshifter settings', 'sceneshifter' ); ?></h1>
+				<?php self::tabs( $tab ); ?>
+				<?php ( new LinkTab( $this->plugin ) )->render(); ?>
+			</div>
+			<?php
+			return;
+		}
 		if ( 'pairing' === $tab ) {
 			?>
 			<div class="wrap sceneshifter-settings">
@@ -282,6 +293,7 @@ final class SettingsPage {
 		);
 		if ( PairingTab::canManage() ) {
 			$tabs['pairing'] = __( 'Pairing', 'sceneshifter' );
+			$tabs['link']    = __( 'Link content', 'sceneshifter' );
 		}
 		echo '<nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Settings sections', 'sceneshifter' ) . '">';
 		foreach ( $tabs as $tab => $label ) {

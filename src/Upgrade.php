@@ -16,11 +16,12 @@ namespace RedC\Sceneshifter;
 
 use RedC\Sceneshifter\SiteScan\Schema;
 use RedC\Sceneshifter\Store\DbNonceStore;
+use RedC\Sceneshifter\SyncMap\DbMapStore;
 
 final class Upgrade {
 
 	/** Bump when a table changes or a new one is added. */
-	public const VERSION = '2';
+	public const VERSION = '3';
 	public const OPTION  = 'sceneshifter_schema_version';
 
 	/**
@@ -38,6 +39,7 @@ final class Upgrade {
 	public static function run(): void {
 		Schema::install();
 		DbNonceStore::install();
+		DbMapStore::install();
 		update_option( self::OPTION, self::VERSION, true );
 	}
 }

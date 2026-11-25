@@ -8,7 +8,7 @@ use RedC\Sceneshifter\Registry\Registry;
 
 final class Fixtures {
 
-	public static function registry(): Registry {
+	public static function registry( bool $devPublic = false ): Registry {
 		return Registry::fromArray(
 			array(
 				'version' => 3,
@@ -31,7 +31,7 @@ final class Fixtures {
 						'label'  => 'Dev',
 						'role'   => 'dev',
 						'url'    => 'http://client.test:8080',
-						'public' => false,
+						'public' => $devPublic,
 					),
 					array(
 						'id'    => 'uat',

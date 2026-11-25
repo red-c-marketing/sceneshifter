@@ -329,3 +329,63 @@ code.sceneshifter-fingerprint {
 		font-weight: 600;
 	}
 }
+
+/* Link content tab. */
+.sceneshifter-scroll {
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.sceneshifter-link-summary,
+.sceneshifter-link-table {
+	max-width: 80em;
+	margin: 8px 0 16px;
+}
+
+.sceneshifter-link-table {
+	table-layout: fixed;
+}
+
+.sceneshifter-link-table td,
+.sceneshifter-link-table th {
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.sceneshifter-link-table thead th:last-child {
+	width: 22%;
+}
+
+.sceneshifter-link-unmatched li {
+	overflow-wrap: anywhere;
+}
+
+.sceneshifter-link-table code,
+.sceneshifter-link-unmatched code {
+	word-break: break-all;
+}
+
+.sceneshifter-link-review details {
+	max-width: 80em;
+	margin: 8px 0;
+}
+
+.sceneshifter-link-review summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.sceneshifter-link-candidate + .sceneshifter-link-candidate {
+	margin-top: 6px;
+}
+
+.sceneshifter-link-progress {
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+.sceneshifter-link-failed {
+	list-style: disc;
+	margin-left: 2em;
+	color: #b32d2e;
+}

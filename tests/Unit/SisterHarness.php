@@ -11,6 +11,10 @@ use RedC\Sceneshifter\Pairing\Handshake;
 use RedC\Sceneshifter\Pairing\Sisters;
 use RedC\Sceneshifter\Registry\Registry;
 use RedC\Sceneshifter\Store\MemoryKeyValueStore;
+use RedC\Sceneshifter\SyncMap\InventoryCache;
+use RedC\Sceneshifter\SyncMap\LinkExisting;
+use RedC\Sceneshifter\SyncMap\MemoryMapStore;
+use RedC\Sceneshifter\SyncMap\Responder;
 
 /**
  * A pretend site: its own stores and salts, a Sisters instance, and a fake
@@ -22,6 +26,9 @@ final class SisterHarness {
 	public MemoryKeyValueStore $store;
 	public MemoryNonceStore $nonces;
 	public Sisters $sisters;
+	public MemoryContentIndex $content;
+	public MemoryMapStore $map;
+	private Registry $registry;
 
 	/** @var array<string, self> by host */
 	public static array $network = array();
@@ -38,6 +45,8 @@ final class SisterHarness {
 		$registry     = $registry ?? Fixtures::registry();
 		$this->store  = new MemoryKeyValueStore();
 		$this->nonces = new MemoryNonceStore();
+		$this->content = new MemoryContentIndex();
+		$this->map     = new MemoryMapStore();
 		$this->boot( $registry, $active );
 		$site = $registry->get( $siteId );
 		if ( null !== $site ) {
@@ -49,8 +58,9 @@ final class SisterHarness {
 	 * Rebuilds Sisters over the same stores, as a new request would.
 	 */
 	public function boot( ?Registry $registry = null, bool $active = true ): void {
-		$registry      = $registry ?? Fixtures::registry();
-		$this->sisters = new Sisters(
+		$registry       = $registry ?? Fixtures::registry();
+		$this->registry = $registry;
+		$this->sisters  = new Sisters(
 			$active ? $registry->get( $this->siteId ) : null,
 			$registry,
 			$this->store,
@@ -100,11 +110,25 @@ final class SisterHarness {
 				)
 			);
 		}
+		if ( Responder::INVENTORY_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->responder()->inventory( (array) json_decode( $body, true ) ) );
+		}
+		if ( Responder::LINK_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->responder()->link( $sender, (array) json_decode( $body, true ), time() ) );
+		}
 		if ( Sisters::UNPAIR_ROUTE === $route && 'POST' === $method ) {
 			$this->sisters->pairings()->remove( $sender );
 			return $this->signed( $headers, $sender, array( 'unpaired' => true ) );
 		}
 		return self::notFound();
+	}
+
+	public function responder(): Responder {
+		return new Responder( $this->content, $this->map );
+	}
+
+	public function linker(): LinkExisting {
+		return new LinkExisting( $this->content, $this->map, new InventoryCache( $this->store ), $this->registry, $this->sisters->transport() );
 	}
 
 	/**

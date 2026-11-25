@@ -21,6 +21,7 @@ use RedC\Sceneshifter\Check\ListIntegration;
 use RedC\Sceneshifter\Check\PublishGuard;
 use RedC\Sceneshifter\Check\RestController;
 use RedC\Sceneshifter\Cli\Command;
+use RedC\Sceneshifter\Cli\MapCommand;
 use RedC\Sceneshifter\Pairing\SecretMaterial;
 use RedC\Sceneshifter\Pairing\Sisters;
 use RedC\Sceneshifter\Registry\Identity;
@@ -36,6 +37,11 @@ use RedC\Sceneshifter\SiteScan\SiteScanner;
 use RedC\Sceneshifter\Store\DbNonceStore;
 use RedC\Sceneshifter\Store\Options;
 use RedC\Sceneshifter\Store\WpOptionStore;
+use RedC\Sceneshifter\SyncMap\DbMapStore;
+use RedC\Sceneshifter\SyncMap\InventoryCache;
+use RedC\Sceneshifter\SyncMap\SyncMap;
+use RedC\Sceneshifter\SyncMap\Uuid;
+use RedC\Sceneshifter\SyncMap\WpContentIndex;
 use RedC\Sceneshifter\Transport\SignedEndpoints;
 use RedC\Sceneshifter\Url\UrlClassifier;
 
@@ -62,6 +68,7 @@ final class Plugin {
 	private ?PostScanner $postScanner = null;
 	private ?SiteScanner $siteScanner = null;
 	private ?Sisters $sisters = null;
+	private ?SyncMap $syncMap = null;
 
 	public static function instance(): self {
 		return self::$instance ??= new self();
@@ -118,8 +125,13 @@ final class Plugin {
 		// Always registered: when this site is inactive the gate refuses
 		// every signed request with the same plain 404.
 		( new SignedEndpoints( $this ) )->register();
+
+		// Duplicate Post (Yoast) must not copy the sync map UUID to the copy.
+		add_filter( 'duplicate_post_excludelist_filter', array( Uuid::class, 'excludeFromCopies' ) );
+		add_filter( 'duplicate_post_blacklist_filter', array( Uuid::class, 'excludeFromCopies' ) );
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			\WP_CLI::add_command( 'sceneshifter', new Command( $this ) );
+			\WP_CLI::add_command( 'sceneshifter map', new MapCommand( $this ) );
 		}
 
 		if ( is_admin() ) {
@@ -192,6 +204,24 @@ final class Plugin {
 			DbNonceStore::forSite(),
 			SecretMaterial::fromConstants(),
 			$this->options->allowDevHttp()
+		);
+	}
+
+	/**
+	 * The sync map and Link existing content, or null when this site is
+	 * inactive.
+	 */
+	public function syncMap(): ?SyncMap {
+		$self = $this->sisters()->self();
+		if ( null === $self ) {
+			return null;
+		}
+		return $this->syncMap ??= new SyncMap(
+			new WpContentIndex( $this->options->postTypes() ),
+			DbMapStore::forSite( $self->id ),
+			new InventoryCache( new WpOptionStore() ),
+			$this->registry,
+			$this->sisters()->transport()
 		);
 	}
 

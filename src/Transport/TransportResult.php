@@ -14,6 +14,7 @@ final class TransportResult {
 	public const OK              = 'ok';
 	public const NOT_IN_REGISTRY = 'not_in_registry';
 	public const NOT_PAIRED      = 'not_paired';
+	public const NOT_PUBLIC      = 'not_public';
 	public const NO_KEY          = 'no_key';
 	public const INSECURE_URL    = 'insecure_url';
 	public const UNREACHABLE     = 'unreachable';

@@ -26,6 +26,9 @@ delete_option( 'sceneshifter_allow_dev_http' );
 global $wpdb;
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_scan_results" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_nonces" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sceneshifter_map" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'sceneshifter_inventory_' ) . '%' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+delete_post_meta_by_key( '_sceneshifter_uuid' );
 
 wp_unschedule_hook( 'sceneshifter_scheduled_scan' );
 wp_unschedule_hook( 'sceneshifter_scan_batch' );

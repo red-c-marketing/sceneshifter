@@ -136,12 +136,12 @@
 	// Pairing tab: confirm destructive buttons, copy the code, jump to the
 	// paste box, and say when the other site has used the code.
 	function initPairing() {
-		document.querySelectorAll( 'form[data-sceneshifter-confirm]' ).forEach( function ( form ) {
-			form.addEventListener( 'submit', function ( event ) {
-				if ( ! window.confirm( form.getAttribute( 'data-sceneshifter-confirm' ) ) ) {
-					event.preventDefault();
-				}
-			} );
+		// Delegated, so rows redrawn by watchRows() keep working.
+		document.addEventListener( 'submit', function ( event ) {
+			var form = event.target;
+			if ( form.matches && form.matches( 'form[data-sceneshifter-confirm]' ) && ! window.confirm( form.getAttribute( 'data-sceneshifter-confirm' ) ) ) {
+				event.preventDefault();
+			}
 		} );
 
 		document.querySelectorAll( '[data-sceneshifter-copy]' ).forEach( function ( button ) {
@@ -170,16 +170,16 @@
 			} );
 		} );
 
-		document.querySelectorAll( '[data-sceneshifter-paste]' ).forEach( function ( link ) {
-			link.addEventListener( 'click', function () {
-				var field = document.getElementById( 'sceneshifter-code' );
-				if ( field ) {
-					window.setTimeout( function () {
-						field.focus();
-					}, 0 );
-				}
-			} );
+		document.addEventListener( 'click', function ( event ) {
+			var field = document.getElementById( 'sceneshifter-code' );
+			if ( field && event.target.closest && event.target.closest( '[data-sceneshifter-paste]' ) ) {
+				window.setTimeout( function () {
+					field.focus();
+				}, 0 );
+			}
 		} );
+
+		watchRows();
 
 		var wait = document.querySelector( '[data-sceneshifter-pairing-wait]' );
 		if ( ! wait || ! window.fetch ) {
@@ -213,10 +213,189 @@
 		}, 3000 );
 	}
 
+	// Redraws the pairing rows when the other site pairs or unpairs, without
+	// touching the paste form. Checks every 10 seconds while the tab is visible.
+	function watchRows() {
+		var body = document.querySelector( '[data-sceneshifter-pairing-rows]' );
+		if ( ! body || ! window.fetch ) {
+			return;
+		}
+		var busy = false;
+		window.setInterval( function () {
+			if ( busy || document.hidden || body.contains( document.activeElement ) ) {
+				return;
+			}
+			busy = true;
+			var query = new URLSearchParams( {
+				action: body.getAttribute( 'data-action' ),
+				_ajax_nonce: body.getAttribute( 'data-nonce' ),
+				hash: body.getAttribute( 'data-hash' ),
+			} );
+			window.fetch( body.getAttribute( 'data-url' ) + '?' + query.toString(), { credentials: 'same-origin' } )
+				.then( function ( response ) {
+					return response.json();
+				} )
+				.then( function ( json ) {
+					if ( json && json.success && json.data.hash !== body.getAttribute( 'data-hash' ) && 'string' === typeof json.data.html ) {
+						body.innerHTML = json.data.html;
+						body.setAttribute( 'data-hash', json.data.hash );
+					}
+				} )
+				.catch( function () {} )
+				.then( function () {
+					busy = false;
+				} );
+		}, 10000 );
+	}
+
+	// Link content tab: fetch the other site's list in steps, then link the
+	// ticked matches in batches.
+	function post( url, fields ) {
+		var body = new URLSearchParams( fields );
+		return window.fetch( url, { method: 'POST', credentials: 'same-origin', body: body } )
+			.then( function ( response ) {
+				return response.json().catch( function () {
+					return { success: false, data: { message: 'HTTP ' + response.status } };
+				} );
+			} );
+	}
+
+	function texts( element ) {
+		try {
+			return JSON.parse( element.getAttribute( 'data-text' ) || '{}' );
+		} catch ( e ) {
+			return {};
+		}
+	}
+
+	function fill( text, a, b ) {
+		return String( text || '' ).replace( '%1$d', String( a ) ).replace( '%2$d', String( b ) );
+	}
+
+	function initLink() {
+		var fetchBox = document.querySelector( '[data-sceneshifter-fetch]' );
+		if ( fetchBox ) {
+			var start = fetchBox.querySelector( '[data-sceneshifter-fetch-start]' );
+			var status = fetchBox.querySelector( '[data-sceneshifter-fetch-status]' );
+			var step = function ( first ) {
+				post( fetchBox.getAttribute( 'data-url' ), {
+					action: fetchBox.getAttribute( 'data-action' ),
+					_ajax_nonce: fetchBox.getAttribute( 'data-nonce' ),
+					sister: fetchBox.getAttribute( 'data-sister' ),
+					start: first ? '1' : '',
+				} ).then( function ( json ) {
+					var data = json && json.data ? json.data : {};
+					status.textContent = data.message || '';
+					if ( ! json || ! json.success ) {
+						status.classList.add( 'sceneshifter-error-text' );
+						start.disabled = false;
+						return;
+					}
+					if ( data.done ) {
+						window.location.href = fetchBox.getAttribute( 'data-done-url' );
+						return;
+					}
+					step( false );
+				}, function () {
+					status.textContent = texts( fetchBox ).failed || '';
+					start.disabled = false;
+				} );
+			};
+			start.addEventListener( 'click', function () {
+				start.disabled = true;
+				status.classList.remove( 'sceneshifter-error-text' );
+				step( true );
+			} );
+		}
+
+		document.addEventListener( 'change', function ( event ) {
+			var all = event.target.closest( '[data-sceneshifter-check-all]' );
+			if ( ! all ) {
+				return;
+			}
+			all.closest( 'table' ).querySelectorAll( 'tbody input[data-local]' ).forEach( function ( box ) {
+				box.checked = all.checked;
+			} );
+		} );
+
+		var form = document.querySelector( '[data-sceneshifter-link]' );
+		if ( ! form ) {
+			return;
+		}
+		form.addEventListener( 'submit', function ( event ) {
+			event.preventDefault();
+			var submit = form.querySelector( '[data-sceneshifter-link-submit]' );
+			var status = form.querySelector( '[data-sceneshifter-link-status]' );
+			var failures = form.querySelector( '[data-sceneshifter-link-failures]' );
+			var pairs = [];
+			form.querySelectorAll( 'input[data-local]:checked' ).forEach( function ( box ) {
+				pairs.push( [ parseInt( box.getAttribute( 'data-local' ), 10 ), parseInt( box.getAttribute( 'data-remote' ), 10 ) ] );
+			} );
+			if ( ! pairs.length ) {
+				return;
+			}
+			var text = texts( form );
+			var size = parseInt( form.getAttribute( 'data-batch' ), 10 ) || 100;
+			var total = pairs.length;
+			var linked = 0;
+			var failed = [];
+			submit.disabled = true;
+			failures.innerHTML = '';
+
+			var finish = function ( error ) {
+				status.textContent = fill( text.linked, linked, total ) + ( error ? ' ' + error : '' );
+				if ( failed.length || error ) {
+					var list = document.createElement( 'ul' );
+					list.className = 'sceneshifter-link-failed';
+					failed.forEach( function ( text ) {
+						var item = document.createElement( 'li' );
+						item.textContent = text;
+						list.appendChild( item );
+					} );
+					failures.appendChild( list );
+					var again = document.createElement( 'a' );
+					again.href = window.location.href;
+					again.className = 'button';
+					again.textContent = text.refresh || '';
+					failures.appendChild( again );
+					return;
+				}
+				window.location.reload();
+			};
+
+			var next = function () {
+				var batch = pairs.splice( 0, size );
+				if ( ! batch.length ) {
+					finish( '' );
+					return;
+				}
+				status.textContent = fill( text.linking, linked, total );
+				post( form.getAttribute( 'data-url' ), {
+					action: form.getAttribute( 'data-action' ),
+					_ajax_nonce: form.getAttribute( 'data-nonce' ),
+					sister: form.getAttribute( 'data-sister' ),
+					pairs: JSON.stringify( batch ),
+				} ).then( function ( json ) {
+					if ( ! json || ! json.success ) {
+						finish( json && json.data && json.data.message ? json.data.message : text.failed );
+						return;
+					}
+					linked += json.data.linked;
+					failed = failed.concat( json.data.failed || [] );
+					next();
+				}, function () {
+					finish( text.failed );
+				} );
+			};
+			next();
+		} );
+	}
+
 	function init() {
 		initSites();
 		initReceive();
 		initPairing();
+		initLink();
 	}
 
 	if ( document.readyState === 'loading' ) {
