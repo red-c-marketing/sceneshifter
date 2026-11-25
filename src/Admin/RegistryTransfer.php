@@ -125,16 +125,28 @@ final class RegistryTransfer {
 			<p class="description"><?php esc_html_e( 'For a site you can\'t open from this browser, such as a colleague\'s dev site: download the file here, then import it on that site.', 'sister-sync' ); ?></p>
 			<div class="sister-sync-file-actions">
 				<?php if ( ! $registry->isEmpty() ) : ?>
-					<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=' . self::EXPORT ), self::EXPORT ) ); ?>">
-						<?php esc_html_e( 'Download the site list', 'sister-sync' ); ?>
-					</a>
+					<div class="sister-sync-file-step">
+						<h4><?php esc_html_e( 'Download from this site', 'sister-sync' ); ?></h4>
+						<p><?php esc_html_e( 'Saves this site\'s list as a .json file.', 'sister-sync' ); ?></p>
+						<p>
+							<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=' . self::EXPORT ), self::EXPORT ) ); ?>">
+								<?php esc_html_e( 'Download the site list', 'sister-sync' ); ?>
+							</a>
+						</p>
+					</div>
 				<?php endif; ?>
-				<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( self::reviewUrl() ); ?>" class="sister-sync-import">
+				<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( self::reviewUrl() ); ?>" class="sister-sync-file-step sister-sync-import">
+					<h4><?php esc_html_e( 'Import on this site', 'sister-sync' ); ?></h4>
 					<?php wp_nonce_field( self::REVIEW ); ?>
 					<input type="hidden" name="source" value="<?php echo esc_attr( IncomingRegistry::SOURCE_FILE ); ?>">
-					<label for="sister-sync-registry-file"><?php esc_html_e( 'Import a site list file:', 'sister-sync' ); ?></label>
-					<input type="file" id="sister-sync-registry-file" name="registry_file" accept=".json,application/json" required>
-					<button type="submit" class="button"><?php esc_html_e( 'Review import', 'sister-sync' ); ?></button>
+					<p>
+						<label for="sister-sync-registry-file"><?php esc_html_e( 'Site list file, downloaded from another site:', 'sister-sync' ); ?></label>
+						<input type="file" id="sister-sync-registry-file" name="registry_file" accept=".json,application/json" required>
+					</p>
+					<p>
+						<button type="submit" class="button"><?php esc_html_e( 'Review import', 'sister-sync' ); ?></button>
+					</p>
+					<p class="description"><?php esc_html_e( 'Nothing changes until you confirm on the next screen.', 'sister-sync' ); ?></p>
 				</form>
 			</div>
 		</div>
