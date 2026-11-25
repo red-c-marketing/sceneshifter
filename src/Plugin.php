@@ -24,6 +24,7 @@ use RedC\Sceneshifter\Check\PublishGuard;
 use RedC\Sceneshifter\Check\RestController;
 use RedC\Sceneshifter\Cli\Command;
 use RedC\Sceneshifter\Cli\MapCommand;
+use RedC\Sceneshifter\Cli\PushCommand;
 use RedC\Sceneshifter\Pairing\SecretMaterial;
 use RedC\Sceneshifter\Pairing\Sisters;
 use RedC\Sceneshifter\Registry\Identity;
@@ -148,6 +149,10 @@ final class Plugin {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			\WP_CLI::add_command( 'sceneshifter', new Command( $this ) );
 			\WP_CLI::add_command( 'sceneshifter map', new MapCommand( $this ) );
+			$push = new PushCommand( $this );
+			\WP_CLI::add_command( 'sceneshifter push', array( $push, 'push' ) );
+			\WP_CLI::add_command( 'sceneshifter log', array( $push, 'log' ) );
+			\WP_CLI::add_command( 'sceneshifter rollback', array( $push, 'rollback' ) );
 		}
 
 		if ( is_admin() ) {
