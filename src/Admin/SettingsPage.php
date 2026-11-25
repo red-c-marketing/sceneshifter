@@ -37,6 +37,7 @@ final class SettingsPage {
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		( new CheckSettingsTab( $this->plugin ) )->register();
+		( new PairingTab( $this->plugin ) )->register();
 	}
 
 	public function addMenu(): void {
@@ -82,7 +83,18 @@ final class SettingsPage {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- choosing a tab only.
-		$tab = 'check' === ( $_GET['tab'] ?? '' ) ? 'check' : 'sites';
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+		$tab = in_array( $tab, array( 'check', 'pairing' ), true ) ? $tab : 'sites';
+		if ( 'pairing' === $tab ) {
+			?>
+			<div class="wrap sister-sync-settings">
+				<h1><?php esc_html_e( 'Sister Sync settings', 'sister-sync' ); ?></h1>
+				<?php self::tabs( $tab ); ?>
+				<?php ( new PairingTab( $this->plugin ) )->render(); ?>
+			</div>
+			<?php
+			return;
+		}
 		if ( 'check' === $tab ) {
 			?>
 			<div class="wrap sister-sync-settings">
@@ -268,6 +280,9 @@ final class SettingsPage {
 			'sites' => __( 'Sites', 'sister-sync' ),
 			'check' => __( 'Check', 'sister-sync' ),
 		);
+		if ( PairingTab::canManage() ) {
+			$tabs['pairing'] = __( 'Pairing', 'sister-sync' );
+		}
 		echo '<nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Settings sections', 'sister-sync' ) . '">';
 		foreach ( $tabs as $tab => $label ) {
 			printf(

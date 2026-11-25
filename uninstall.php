@@ -17,9 +17,15 @@ delete_option( 'sister_sync_report_scan' );
 delete_option( 'sister_sync_scan_lock' );
 delete_option( 'sister_sync_db_version' );
 delete_option( 'sister_sync_caps_version' );
+delete_option( 'sister_sync_schema_version' );
+delete_option( 'sister_sync_keys' );
+delete_option( 'sister_sync_pairings' );
+delete_option( 'sister_sync_pairing_codes' );
+delete_option( 'sister_sync_allow_dev_http' );
 
 global $wpdb;
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sistersync_scan_results" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sistersync_nonces" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 wp_unschedule_hook( 'sister_sync_scheduled_scan' );
 wp_unschedule_hook( 'sister_sync_scan_batch' );

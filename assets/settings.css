@@ -231,3 +231,101 @@
 	gap: 8px;
 	margin: 8px 0 16px;
 }
+
+/* Pairing tab. */
+.sister-sync-pairings {
+	max-width: 80em;
+	margin: 16px 0;
+}
+
+.sister-sync-pairings td {
+	vertical-align: top;
+}
+
+.sister-sync-pairings code {
+	word-break: break-all;
+}
+
+.sister-sync-pair-actions form {
+	display: inline-block;
+	margin: 0 4px 4px 0;
+}
+
+.sister-sync-pair-actions .button {
+	margin: 0 4px 4px 0;
+}
+
+.sister-sync-pair-actions .description {
+	margin: 4px 0 0;
+	max-width: 24em;
+}
+
+.sister-sync-tag {
+	display: inline-block;
+	padding: 0 6px;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	color: #50575e;
+	font-size: 12px;
+	line-height: 18px;
+}
+
+.sister-sync-paired {
+	color: #007017;
+	font-weight: 600;
+}
+
+.sister-sync-error-text {
+	color: #b32d2e;
+}
+
+code.sister-sync-fingerprint {
+	font-size: 1.1em;
+	letter-spacing: 0.05em;
+	white-space: nowrap;
+}
+
+.sister-sync-code-box,
+.sister-sync-paste {
+	max-width: 60em;
+}
+
+.sister-sync-code-box textarea {
+	word-break: break-all;
+}
+
+.sister-sync-pairing-wait.is-paired {
+	color: #007017;
+	font-weight: 600;
+}
+
+.sister-sync-confirm-actions .button {
+	margin-right: 8px;
+}
+
+.sister-sync-dev {
+	margin-top: 32px;
+}
+
+@media screen and (max-width: 782px) {
+	.sister-sync-pairings thead {
+		display: none;
+	}
+
+	.sister-sync-pairings tr,
+	.sister-sync-pairings td {
+		display: block;
+	}
+
+	.sister-sync-pairings tr {
+		padding: 8px 0;
+		border-bottom: 1px solid #dcdcde;
+	}
+
+	.sister-sync-pairings td[data-label]::before {
+		content: attr(data-label);
+		display: block;
+		margin-bottom: 2px;
+		font-weight: 600;
+	}
+}

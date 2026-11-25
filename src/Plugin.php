@@ -21,6 +21,8 @@ use RedC\SisterSync\Check\ListIntegration;
 use RedC\SisterSync\Check\PublishGuard;
 use RedC\SisterSync\Check\RestController;
 use RedC\SisterSync\Cli\Command;
+use RedC\SisterSync\Pairing\SecretMaterial;
+use RedC\SisterSync\Pairing\Sisters;
 use RedC\SisterSync\Registry\Identity;
 use RedC\SisterSync\Registry\Registry;
 use RedC\SisterSync\Scanner\ContentScanner;
@@ -30,9 +32,11 @@ use RedC\SisterSync\SiteScan\ListColumn;
 use RedC\SisterSync\SiteScan\ReportPage;
 use RedC\SisterSync\SiteScan\ScanController;
 use RedC\SisterSync\SiteScan\ScheduledScan;
-use RedC\SisterSync\SiteScan\Schema;
 use RedC\SisterSync\SiteScan\SiteScanner;
+use RedC\SisterSync\Store\DbNonceStore;
 use RedC\SisterSync\Store\Options;
+use RedC\SisterSync\Store\WpOptionStore;
+use RedC\SisterSync\Transport\SignedEndpoints;
 use RedC\SisterSync\Url\UrlClassifier;
 
 final class Plugin {
@@ -43,6 +47,12 @@ final class Plugin {
 	public const CAPS_VERSION        = '1';
 	public const CAPS_VERSION_OPTION = 'sister_sync_caps_version';
 
+	/**
+	 * Version of the package format sisters exchange. Sisters with a
+	 * different format refuse each other's packages.
+	 */
+	public const PACKAGE_FORMAT = '1';
+
 	private static ?self $instance = null;
 
 	private Options $options;
@@ -51,6 +61,7 @@ final class Plugin {
 	private ?ContentScanner $contentScanner = null;
 	private ?PostScanner $postScanner = null;
 	private ?SiteScanner $siteScanner = null;
+	private ?Sisters $sisters = null;
 
 	public static function instance(): self {
 		return self::$instance ??= new self();
@@ -72,14 +83,14 @@ final class Plugin {
 
 	public static function activate(): void {
 		self::grantCapabilities();
-		Schema::install();
+		Upgrade::run();
 	}
 
 	/**
 	 * Gives administrators the plugin's capabilities. Runs on activation, and
-	 * once on load for installs that never activate, such as must-use
-	 * plugins. The version option stops it re-adding a capability that
-	 * someone later removed on purpose.
+	 * once on load (from Upgrade::maybeRun()) for installs that never
+	 * activate, such as must-use plugins. The version option stops it
+	 * re-adding a capability that someone later removed on purpose.
 	 */
 	public static function grantCapabilities(): void {
 		$role = get_role( 'administrator' );
@@ -91,10 +102,7 @@ final class Plugin {
 	}
 
 	public function boot(): void {
-		Schema::maybeInstall();
-		if ( get_option( self::CAPS_VERSION_OPTION ) !== self::CAPS_VERSION ) {
-			self::grantCapabilities();
-		}
+		Upgrade::maybeRun();
 
 		$this->registry = $this->options->registry();
 		$this->identity = $this->registry->resolveCurrent( home_url(), self::requestHost() );
@@ -106,6 +114,13 @@ final class Plugin {
 		// Always on, so a site with no list yet can receive one.
 		( new RegistryTransfer( $this ) )->register();
 		( new ScheduledScan( $this, $this->siteScanner() ) )->register();
+
+		// Always registered: when this site is inactive the gate refuses
+		// every signed request with the same plain 404.
+		( new SignedEndpoints( $this ) )->register();
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			\WP_CLI::add_command( 'sistersync', new Command( $this ) );
+		}
 
 		if ( is_admin() ) {
 			( new SettingsPage( $this ) )->register();
@@ -127,9 +142,6 @@ final class Plugin {
 			( new ListColumn( $this ) )->register();
 			( new ClassicMetaBox( $this ) )->register();
 			( new EditorAssets( $this ) )->register();
-		}
-		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			\WP_CLI::add_command( 'sistersync', new Command( $this ) );
 		}
 	}
 
@@ -167,6 +179,20 @@ final class Plugin {
 	 */
 	public function postScanner(): PostScanner {
 		return $this->postScanner ??= new PostScanner( $this->contentScanner() );
+	}
+
+	/**
+	 * Keys, pairings and the signed transport for this site.
+	 */
+	public function sisters(): Sisters {
+		return $this->sisters ??= new Sisters(
+			$this->identity->isActive() ? $this->identity->site : null,
+			$this->registry,
+			new WpOptionStore(),
+			DbNonceStore::forSite(),
+			SecretMaterial::fromConstants(),
+			$this->options->allowDevHttp()
+		);
 	}
 
 	public function siteScanner(): SiteScanner {

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace RedC\SisterSync\Admin;
 
+use RedC\SisterSync\Pairing\Sisters;
 use RedC\SisterSync\Plugin;
 use RedC\SisterSync\Registry\Identity;
 
@@ -26,11 +27,12 @@ final class Notices {
 		}
 
 		$identity = $this->plugin->identity();
+		$screen   = get_current_screen();
 		if ( $identity->isActive() ) {
+			$this->renderKeyProblem( $screen );
 			return;
 		}
 
-		$screen = get_current_screen();
 		if ( Identity::UNCONFIGURED === $identity->status && $screen && str_contains( (string) $screen->id, SettingsPage::SLUG ) ) {
 			return; // The settings page explains this itself.
 		}
@@ -56,6 +58,30 @@ final class Notices {
 			esc_html( $message ),
 			esc_url( admin_url( 'admin.php?page=' . SettingsPage::SLUG ) ),
 			esc_html__( 'Open Sister Sync settings', 'sister-sync' )
+		);
+	}
+
+	/**
+	 * On Sister Sync screens, says when this site's key was made on another
+	 * environment, so it needs a new key and new pairings.
+	 */
+	private function renderKeyProblem( ?\WP_Screen $screen ): void {
+		if ( ! $screen || ! str_contains( (string) $screen->id, 'sister-sync' ) ) {
+			return;
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the Pairing tab explains this itself.
+		if ( 'pairing' === ( $_GET['tab'] ?? '' ) ) {
+			return;
+		}
+		$keys = $this->plugin->sisters()->keys();
+		if ( null === $keys || ! $keys->needsNewKey() ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-error"><p>%1$s <a href="%2$s">%3$s</a></p></div>',
+			esc_html( Sisters::keyProblem( $keys->status() ) ),
+			esc_url( PairingTab::url() ),
+			esc_html__( 'Open the Pairing settings', 'sister-sync' )
 		);
 	}
 }

@@ -1,0 +1,136 @@
+<?php
+
+declare(strict_types=1);
+
+namespace RedC\SisterSync\Tests\Unit;
+
+use RedC\SisterSync\Crypto\MemoryNonceStore;
+use RedC\SisterSync\Crypto\SignedRequest;
+use RedC\SisterSync\Crypto\SignedResponse;
+use RedC\SisterSync\Pairing\Handshake;
+use RedC\SisterSync\Pairing\Sisters;
+use RedC\SisterSync\Registry\Registry;
+use RedC\SisterSync\Store\MemoryKeyValueStore;
+
+/**
+ * A pretend site: its own stores and salts, a Sisters instance, and a fake
+ * HTTP layer that hands requests to the other pretend sites the way
+ * SignedEndpoints does on a real site.
+ */
+final class SisterHarness {
+
+	public MemoryKeyValueStore $store;
+	public MemoryNonceStore $nonces;
+	public Sisters $sisters;
+
+	/** @var array<string, self> by host */
+	public static array $network = array();
+
+	/** @var list<array{method: string, url: string, headers: array<string, string>, body: string}> */
+	public array $sent = array();
+
+	public function __construct(
+		public readonly string $siteId,
+		public readonly string $salts,
+		?Registry $registry = null,
+		bool $active = true
+	) {
+		$registry     = $registry ?? Fixtures::registry();
+		$this->store  = new MemoryKeyValueStore();
+		$this->nonces = new MemoryNonceStore();
+		$this->boot( $registry, $active );
+		$site = $registry->get( $siteId );
+		if ( null !== $site ) {
+			self::$network[ (string) parse_url( $site->url, PHP_URL_HOST ) ] = $this;
+		}
+	}
+
+	/**
+	 * Rebuilds Sisters over the same stores, as a new request would.
+	 */
+	public function boot( ?Registry $registry = null, bool $active = true ): void {
+		$registry      = $registry ?? Fixtures::registry();
+		$this->sisters = new Sisters(
+			$active ? $registry->get( $this->siteId ) : null,
+			$registry,
+			$this->store,
+			$this->nonces,
+			$this->salts,
+			true,
+			function ( string $method, string $url, array $headers, string $body ): array|string {
+				$this->sent[] = compact( 'method', 'url', 'headers', 'body' );
+				$target       = self::$network[ (string) parse_url( $url, PHP_URL_HOST ) ] ?? null;
+				return null === $target ? 'Could not resolve host' : $target->serve( $method, $url, $headers, $body );
+			}
+		);
+	}
+
+	/**
+	 * What SignedEndpoints does, without WordPress.
+	 *
+	 * @param array<string, string> $headers
+	 * @return array{status: int, headers: array<string, string>, body: string}
+	 */
+	public function serve( string $method, string $url, array $headers, string $body ): array {
+		$path  = (string) parse_url( $url, PHP_URL_PATH );
+		$route = substr( $path, (int) strpos( $path, '/wp-json' ) + strlen( '/wp-json' ) );
+		$gate  = $this->sisters->gate();
+
+		if ( Handshake::ROUTE === $route ) {
+			$handshake = $gate->isOpen() ? $this->sisters->handshake() : null;
+			$peer      = $handshake?->accept( $method, $route, $headers, $body, time() );
+			return null === $peer || null === $handshake ? self::notFound() : $this->signed( $headers, $peer->siteId, $handshake->responseData( $peer ) );
+		}
+
+		$sender = $gate->verify( $method, $route, $headers, $body );
+		if ( null === $sender ) {
+			return self::notFound();
+		}
+		if ( Sisters::STATUS_ROUTE === $route && 'GET' === $method ) {
+			return $this->signed(
+				$headers,
+				$sender,
+				array(
+					'site'             => $this->siteId,
+					'plugin_version'   => '9.9.9',
+					'format'           => '1',
+					'registry_version' => 3,
+					'paired'           => true,
+					'time'             => time(),
+				)
+			);
+		}
+		if ( Sisters::UNPAIR_ROUTE === $route && 'POST' === $method ) {
+			$this->sisters->pairings()->remove( $sender );
+			return $this->signed( $headers, $sender, array( 'unpaired' => true ) );
+		}
+		return self::notFound();
+	}
+
+	/**
+	 * @param array<string, string> $headers
+	 * @param array<string, mixed>  $data
+	 * @return array{status: int, headers: array<string, string>, body: string}
+	 */
+	private function signed( array $headers, string $sender, array $data ): array {
+		$body = (string) json_encode( $data );
+		$keys = $this->sisters->keys()?->keyPair();
+		$sig  = null === $keys ? '' : SignedResponse::sign( $keys, $sender, $this->siteId, $headers[ SignedRequest::HEADER_NONCE ] ?? '', 200, $body );
+		return array(
+			'status'  => 200,
+			'headers' => array( 'x-sister-sync-response-signature' => $sig ),
+			'body'    => $body,
+		);
+	}
+
+	/**
+	 * @return array{status: int, headers: array<string, string>, body: string}
+	 */
+	private static function notFound(): array {
+		return array(
+			'status'  => 404,
+			'headers' => array(),
+			'body'    => '{"code":"rest_no_route","message":"No route was found matching the URL and request method.","data":{"status":404}}',
+		);
+	}
+}

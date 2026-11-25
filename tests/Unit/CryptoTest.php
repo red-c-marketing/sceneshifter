@@ -12,6 +12,7 @@ use RedC\SisterSync\Crypto\MemoryNonceStore;
 use RedC\SisterSync\Crypto\PairingCode;
 use RedC\SisterSync\Crypto\RequestVerifier;
 use RedC\SisterSync\Crypto\SignedRequest;
+use RedC\SisterSync\Crypto\SignedResponse;
 use RedC\SisterSync\Crypto\TransportPolicy;
 
 final class CryptoTest extends TestCase {
@@ -110,6 +111,24 @@ final class CryptoTest extends TestCase {
 
 		$this->expectExceptionMessage( 'expired' );
 		PairingCode::decode( $code->encode(), self::NOW + PairingCode::LIFETIME + 1 );
+	}
+
+	public function test_pairing_code_can_name_the_site_it_is_for(): void {
+		$code = PairingCode::create( 'staging', KeyPair::generate(), 'abc123', self::NOW, 'dev' );
+		$this->assertSame( 'dev', PairingCode::decode( $code->encode(), self::NOW )->forSiteId );
+		$this->assertSame( '', PairingCode::decode( PairingCode::create( 'staging', KeyPair::generate(), 'abc123', self::NOW )->encode(), self::NOW )->forSiteId );
+	}
+
+	public function test_signed_responses_are_bound_to_the_request_and_body(): void {
+		$live = KeyPair::generate();
+		$sig  = SignedResponse::sign( $live, 'staging', 'live', 'nonce-1234567890abcdef', 200, '{"ok":true}' );
+
+		$this->assertTrue( SignedResponse::verify( $sig, $live->publicKey, 'staging', 'live', 'nonce-1234567890abcdef', 200, '{"ok":true}' ) );
+		$this->assertFalse( SignedResponse::verify( $sig, $live->publicKey, 'staging', 'live', 'nonce-1234567890abcdef', 200, '{"ok":false}' ), 'Body changed.' );
+		$this->assertFalse( SignedResponse::verify( $sig, $live->publicKey, 'staging', 'live', 'another-nonce-12345678', 200, '{"ok":true}' ), 'Other request.' );
+		$this->assertFalse( SignedResponse::verify( $sig, $live->publicKey, 'dev', 'live', 'nonce-1234567890abcdef', 200, '{"ok":true}' ), 'Other caller.' );
+		$this->assertFalse( SignedResponse::verify( $sig, KeyPair::generate()->publicKey, 'staging', 'live', 'nonce-1234567890abcdef', 200, '{"ok":true}' ), 'Other key.' );
+		$this->assertFalse( SignedResponse::verify( '', $live->publicKey, 'staging', 'live', 'nonce-1234567890abcdef', 200, '{"ok":true}' ), 'Unsigned.' );
 	}
 
 	public function test_pairing_code_rejects_junk(): void {

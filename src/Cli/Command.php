@@ -9,7 +9,10 @@ declare(strict_types=1);
 
 namespace RedC\SisterSync\Cli;
 
+use RedC\SisterSync\Admin\PairingTab;
 use RedC\SisterSync\Check\RestController;
+use RedC\SisterSync\Pairing\Sisters;
+use RedC\SisterSync\Pairing\SiteKeys;
 use RedC\SisterSync\Plugin;
 use RedC\SisterSync\Scanner\Finding;
 use RedC\SisterSync\SiteScan\ReportFilters;
@@ -46,6 +49,7 @@ final class Command {
 	 * @param array<string, string> $assoc
 	 */
 	public function check( array $args, array $assoc ): void {
+		$this->requireActive();
 		$rows = array();
 		foreach ( $args as $id ) {
 			$post = get_post( (int) $id );
@@ -87,6 +91,7 @@ final class Command {
 	 * @param array<string, string> $assoc
 	 */
 	public function scan( array $args, array $assoc ): void {
+		$this->requireActive();
 		if ( isset( $assoc['save'] ) ) {
 			$this->saveScan( $assoc['format'] ?? 'table' );
 			return;
@@ -124,6 +129,93 @@ final class Command {
 		$this->output( $rows, $assoc['format'] ?? 'table' );
 		if ( 'table' === ( $assoc['format'] ?? 'table' ) ) {
 			WP_CLI::log( sprintf( 'Scanned %d posts.', $scanned ) );
+		}
+	}
+
+	/**
+	 * Lists the other sites, whether each is paired, and for paired sites
+	 * asks them for their status over a signed request.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--format=<format>]
+	 * : table, csv, json or yaml.
+	 * ---
+	 * default: table
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp sistersync status
+	 *     wp sistersync status --url=https://staging.example.com
+	 *
+	 * @param list<string>          $args
+	 * @param array<string, string> $assoc
+	 */
+	public function status( array $args, array $assoc ): void {
+		$format   = $assoc['format'] ?? 'table';
+		$identity = $this->plugin->identity();
+		$sisters  = $this->plugin->sisters();
+		$self     = $sisters->self();
+		if ( null === $self ) {
+			WP_CLI::error( sprintf( 'Sister Sync is inactive on this site (%s). Check the site list in Sister Sync → Settings.', $identity->status ) );
+		}
+
+		$keys = $sisters->keys();
+		if ( 'table' === $format ) {
+			WP_CLI::log( sprintf( 'This site: %s (%s), site list version %d.', $self->label, $self->id, $this->plugin->registry()->version ) );
+			if ( null !== $keys && ( $keys->needsNewKey() || SiteKeys::NO_SALTS === $keys->status() ) ) {
+				WP_CLI::warning( Sisters::keyProblem( $keys->status() ) );
+			} elseif ( null !== $keys && null !== $keys->fingerprint() ) {
+				WP_CLI::log( 'Key fingerprint: ' . $keys->fingerprint() );
+			} else {
+				WP_CLI::log( 'No key yet. It is made the first time you open Sister Sync → Settings → Pairing.' );
+			}
+		}
+
+		$rows = array();
+		foreach ( $this->plugin->registry()->sites() as $site ) {
+			if ( $site->id === $self->id ) {
+				continue;
+			}
+			$pairing = $sisters->pairings()->get( $site->id );
+			$row     = array(
+				'site'             => $site->id,
+				'label'            => $site->label,
+				'public'           => $site->isPublic ? 'yes' : 'no',
+				'paired'           => null === $pairing ? 'no' : 'yes',
+				'fingerprint'      => null === $pairing ? '' : $pairing->fingerprint(),
+				'status'           => '',
+				'ms'               => '',
+				'plugin_version'   => '',
+				'registry_version' => '',
+				'message'          => '',
+			);
+			if ( null !== $pairing ) {
+				$result        = $sisters->status( $site->id );
+				$row['status'] = $result->ok() ? 'ok' : $result->code;
+				$row['ms']     = (string) $result->elapsedMs;
+				if ( $result->ok() ) {
+					$row['plugin_version']   = (string) ( $result->data['plugin_version'] ?? '' );
+					$row['registry_version'] = (string) ( $result->data['registry_version'] ?? '' );
+					$row['message']          = implode( ' ', PairingTab::compatibility( $result->data, $this->plugin->registry()->version, $site->label ) );
+				} else {
+					$row['message'] = $result->message;
+				}
+			}
+			$rows[] = $row;
+		}
+
+		if ( array() === $rows && 'table' === $format ) {
+			WP_CLI::log( 'There are no other sites in the list.' );
+			return;
+		}
+		Utils\format_items( $format, $rows, array_keys( $rows[0] ?? array( 'site' => '' ) ) );
+	}
+
+	private function requireActive(): void {
+		if ( ! $this->plugin->identity()->isActive() ) {
+			WP_CLI::error( 'Sister Sync is inactive on this site. Check the site list in Sister Sync → Settings.' );
 		}
 	}
 

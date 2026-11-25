@@ -18,6 +18,9 @@ final class Options {
 	public const POST_TYPES = 'sister_sync_post_types';
 	public const CHECK      = 'sister_sync_check';
 
+	/** Allow plain HTTP to sisters on .test and .localhost hosts. */
+	public const ALLOW_DEV_HTTP = 'sister_sync_allow_dev_http';
+
 	public const DEFAULT_POST_TYPES = array( 'post', 'page' );
 
 	public function registry(): Registry {
@@ -64,6 +67,14 @@ final class Options {
 
 	public function saveCheckSettings( CheckSettings $settings ): void {
 		update_option( self::CHECK, $settings->toArray(), true );
+	}
+
+	public function allowDevHttp(): bool {
+		return (bool) get_option( self::ALLOW_DEV_HTTP, false );
+	}
+
+	public function saveAllowDevHttp( bool $allow ): void {
+		update_option( self::ALLOW_DEV_HTTP, $allow, false );
 	}
 
 	public function isEnabledPostType( string $postType ): bool {
