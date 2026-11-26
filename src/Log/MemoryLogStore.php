@@ -15,7 +15,7 @@ final class MemoryLogStore implements LogStore {
 	public array $entries = array();
 
 	public function add( LogEntry $entry ): int {
-		$id                   = count( $this->entries ) + 1;
+		$id                   = ( array() === $this->entries ? 0 : max( array_keys( $this->entries ) ) ) + 1;
 		$this->entries[ $id ] = $entry->withId( $id );
 		return $id;
 	}
@@ -51,5 +51,11 @@ final class MemoryLogStore implements LogStore {
 		if ( isset( $this->entries[ $id ] ) ) {
 			$this->entries[ $id ] = $this->entries[ $id ]->withDetails( $details );
 		}
+	}
+
+	public function prune( int $before ): int {
+		$count         = count( $this->entries );
+		$this->entries = array_filter( $this->entries, static fn( LogEntry $e ): bool => $e->at >= $before );
+		return $count - count( $this->entries );
 	}
 }

@@ -47,6 +47,7 @@ use RedC\Sceneshifter\SyncMap\SyncMap;
 use RedC\Sceneshifter\SyncMap\Uuid;
 use RedC\Sceneshifter\SyncMap\WpContentIndex;
 use RedC\Sceneshifter\Log\DbLogStore;
+use RedC\Sceneshifter\Log\Retention;
 use RedC\Sceneshifter\Transfer\DbSnapshotStore;
 use RedC\Sceneshifter\Transfer\CopiedMedia;
 use RedC\Sceneshifter\Transfer\HeldUpdates;
@@ -141,6 +142,7 @@ final class Plugin {
 		// Always on, so a site with no list yet can receive one.
 		( new RegistryTransfer( $this ) )->register();
 		( new ScheduledScan( $this, $this->siteScanner() ) )->register();
+		( new Retention( $this ) )->register();
 
 		// Always registered: when this site is inactive the gate refuses
 		// every signed request with the same plain 404.

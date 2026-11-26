@@ -59,6 +59,26 @@ final class DbSnapshotStore implements SnapshotStore {
 		return is_array( $row ) ? self::snapshot( $row ) : null;
 	}
 
+	public function prune( int $before, int $keepNewest ): int {
+		$removed = 0;
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
+		$posts = $this->db->get_col( $this->db->prepare( "SELECT DISTINCT post_id FROM {$this->table} WHERE site = %s AND taken < %d", $this->selfId, $before ) );
+		foreach ( $posts as $postId ) {
+			$rows = $this->db->get_results( $this->db->prepare( "SELECT id, taken FROM {$this->table} WHERE site = %s AND post_id = %d ORDER BY id DESC", $this->selfId, (int) $postId ), ARRAY_A );
+			$drop = array();
+			foreach ( array_slice( is_array( $rows ) ? $rows : array(), max( 0, $keepNewest ) ) as $row ) {
+				if ( (int) $row['taken'] < $before ) {
+					$drop[] = (int) $row['id'];
+				}
+			}
+			foreach ( array_chunk( $drop, 200 ) as $chunk ) {
+				$removed += (int) $this->db->query( $this->db->prepare( "DELETE FROM {$this->table} WHERE site = %s AND id IN (" . implode( ',', array_fill( 0, count( $chunk ), '%d' ) ) . ')', $this->selfId, ...$chunk ) );
+			}
+		}
+		// phpcs:enable
+		return $removed;
+	}
+
 	/**
 	 * @param array<string, mixed> $row
 	 */

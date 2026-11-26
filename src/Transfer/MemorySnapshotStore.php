@@ -15,7 +15,7 @@ final class MemorySnapshotStore implements SnapshotStore {
 	public array $snapshots = array();
 
 	public function save( Snapshot $snapshot ): int {
-		$id                     = count( $this->snapshots ) + 1;
+		$id                     = ( array() === $this->snapshots ? 0 : max( array_keys( $this->snapshots ) ) ) + 1;
 		$this->snapshots[ $id ] = $snapshot->withId( $id );
 		return $id;
 	}
@@ -31,5 +31,18 @@ final class MemorySnapshotStore implements SnapshotStore {
 			}
 		}
 		return null;
+	}
+
+	public function prune( int $before, int $keepNewest ): int {
+		$seen    = array();
+		$removed = 0;
+		foreach ( array_reverse( $this->snapshots, true ) as $id => $snapshot ) {
+			$seen[ $snapshot->postId ] = ( $seen[ $snapshot->postId ] ?? 0 ) + 1;
+			if ( $snapshot->taken < $before && $seen[ $snapshot->postId ] > $keepNewest ) {
+				unset( $this->snapshots[ $id ] );
+				++$removed;
+			}
+		}
+		return $removed;
 	}
 }

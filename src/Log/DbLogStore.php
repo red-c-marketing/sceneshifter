@@ -89,6 +89,11 @@ final class DbLogStore implements LogStore {
 		);
 	}
 
+	public function prune( int $before ): int {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
+		return (int) $this->db->query( $this->db->prepare( "DELETE FROM {$this->table} WHERE site = %s AND at < %d", $this->selfId, $before ) );
+	}
+
 	public function setResult( int $id, string $result, ?string $message ): void {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$this->db->update(

@@ -40,4 +40,11 @@ interface LogStore {
 	 * @param array<string, mixed> $details
 	 */
 	public function setDetails( int $id, array $details ): void;
+
+	/**
+	 * Removes entries older than a time.
+	 *
+	 * @return int How many were removed.
+	 */
+	public function prune( int $before ): int;
 }

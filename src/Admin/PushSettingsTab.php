@@ -81,6 +81,35 @@ final class PushSettingsTab {
 				</tbody>
 			</table>
 
+			<h2><?php esc_html_e( 'Keeping history', 'sceneshifter' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Old log entries and snapshots are removed once a day. A push can only be undone while its snapshot is kept.', 'sceneshifter' ); ?></p>
+			<table class="form-table" role="presentation">
+				<tbody>
+					<tr>
+						<th scope="row"><label for="sceneshifter-log-months"><?php esc_html_e( 'Keep the log for', 'sceneshifter' ); ?></label></th>
+						<td>
+							<input type="number" id="sceneshifter-log-months" name="log_months" min="0" max="120" step="1" class="small-text" value="<?php echo esc_attr( (string) $settings->logMonths ); ?>">
+							<?php esc_html_e( 'months', 'sceneshifter' ); ?>
+							<p class="description"><?php esc_html_e( '0 keeps it for ever.', 'sceneshifter' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="sceneshifter-snapshot-days"><?php esc_html_e( 'Keep snapshots for', 'sceneshifter' ); ?></label></th>
+						<td>
+							<input type="number" id="sceneshifter-snapshot-days" name="snapshot_days" min="1" max="3650" step="1" class="small-text" value="<?php echo esc_attr( (string) $settings->snapshotDays ); ?>">
+							<?php esc_html_e( 'days', 'sceneshifter' ); ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="sceneshifter-snapshots-per-post"><?php esc_html_e( 'And always keep each post\'s newest', 'sceneshifter' ); ?></label></th>
+						<td>
+							<input type="number" id="sceneshifter-snapshots-per-post" name="snapshots_per_post" min="1" max="1000" step="1" class="small-text" value="<?php echo esc_attr( (string) $settings->snapshotsPerPost ); ?>">
+							<?php esc_html_e( 'snapshots', 'sceneshifter' ); ?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
 			<?php submit_button( __( 'Save Push settings', 'sceneshifter' ) ); ?>
 		</form>
 		<?php
@@ -94,11 +123,15 @@ final class PushSettingsTab {
 
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- every value is validated by PushSettings::fromArray().
 		$author   = isset( $_POST['default_author'] ) ? absint( $_POST['default_author'] ) : 0;
+		// Number fields: PushSettings::fromArray() keeps whole numbers within limits.
 		$settings = PushSettings::fromArray(
 			array(
 				'publishedUpdates' => isset( $_POST['published_updates'] ) ? sanitize_key( wp_unslash( $_POST['published_updates'] ) ) : '',
 				'defaultAuthor'    => $author > 0 && user_can( $author, 'edit_posts' ) ? $author : 0,
 				'mediaClash'       => isset( $_POST['media_clash'] ) ? sanitize_key( wp_unslash( $_POST['media_clash'] ) ) : '',
+				'logMonths'        => isset( $_POST['log_months'] ) ? sanitize_text_field( wp_unslash( $_POST['log_months'] ) ) : '',
+				'snapshotDays'     => isset( $_POST['snapshot_days'] ) ? sanitize_text_field( wp_unslash( $_POST['snapshot_days'] ) ) : '',
+				'snapshotsPerPost' => isset( $_POST['snapshots_per_post'] ) ? sanitize_text_field( wp_unslash( $_POST['snapshots_per_post'] ) ) : '',
 			)
 		);
 		// phpcs:enable

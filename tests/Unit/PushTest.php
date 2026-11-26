@@ -354,6 +354,30 @@ final class PushTest extends TestCase {
 		$this->assertSame( 'About us', $staging->facts->packages[201]->title() );
 	}
 
+	public function test_old_log_entries_and_snapshots_are_pruned(): void {
+		$day       = 86400;
+		$now       = 400 * $day;
+		$log       = new \RedC\Sceneshifter\Log\MemoryLogStore();
+		$snapshots = new \RedC\Sceneshifter\Transfer\MemorySnapshotStore();
+		foreach ( array( 10, 200, 399 ) as $age ) {
+			$log->add( new LogEntry( 0, self::TRANSFER, LogEntry::IN, 'dev', '', 11, 201, 'A', LogEntry::DONE, false, null, array(), $now - $age * $day ) );
+		}
+		// Post 201: four old snapshots and one recent; post 202: one old one.
+		foreach ( array( 90, 80, 70, 60, 1 ) as $age ) {
+			$snapshots->save( new \RedC\Sceneshifter\Transfer\Snapshot( 0, self::TRANSFER, 'dev', 201, false, array(), $now - $age * $day ) );
+		}
+		$snapshots->save( new \RedC\Sceneshifter\Transfer\Snapshot( 0, self::TRANSFER, 'dev', 202, false, array(), $now - 90 * $day ) );
+
+		$removed = \RedC\Sceneshifter\Log\Retention::prune( $log, $snapshots, new \RedC\Sceneshifter\Store\PushSettings( logMonths: 12, snapshotDays: 30, snapshotsPerPost: 2 ), $now );
+
+		$this->assertSame( array( 'log' => 1, 'snapshots' => 3 ), $removed );
+		$this->assertSame( array( 1, 2 ), array_keys( $log->entries ), 'Only the entry older than 12 months goes.' );
+		$this->assertSame( array( 4, 5, 6 ), array_keys( $snapshots->snapshots ), 'Each post keeps its newest two, however old.' );
+
+		$forever = \RedC\Sceneshifter\Log\Retention::prune( $log, $snapshots, new \RedC\Sceneshifter\Store\PushSettings( logMonths: 0 ), $now + 9999 * $day );
+		$this->assertSame( 0, $forever['log'], '0 months keeps the log for ever.' );
+	}
+
 	public function test_receiver_accepts_retries_and_refuses_bad_uploads(): void {
 		$files    = new MemoryMediaFiles();
 		$map      = new \RedC\Sceneshifter\SyncMap\MemoryMapStore();

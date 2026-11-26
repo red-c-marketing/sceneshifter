@@ -45,6 +45,7 @@ if ( is_dir( $sceneshifter_tmp ) ) {
 
 wp_unschedule_hook( 'sceneshifter_scheduled_scan' );
 wp_unschedule_hook( 'sceneshifter_scan_batch' );
+wp_unschedule_hook( 'sceneshifter_prune' );
 
 if ( function_exists( 'as_unschedule_all_actions' ) ) {
 	as_unschedule_all_actions( '', array(), 'sceneshifter' );
