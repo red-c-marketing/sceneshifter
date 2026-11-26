@@ -274,6 +274,16 @@ final class PreviewView {
 				/* translators: 1: environment name, 2: post ID there. */
 				: sprintf( __( '%1$s has a post at the same address (ID %2$d), but it is linked to different content here, so this would arrive as a new post with a changed address.', 'sceneshifter' ), $other, $item->blockedBy );
 		}
+		$waiting = $item->waitingReview();
+		if ( null !== $waiting ) {
+			$who  = '' === $waiting['user'] ? __( 'someone', 'sceneshifter' ) : $waiting['user'];
+			$when = 0 === $waiting['at'] ? '' : (string) wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $waiting['at'] );
+			$warnings[] = $this->pull
+				/* translators: 1: person, 2: environment name, 3: date and time. */
+				? sprintf( __( 'An update %1$s pushed from %2$s on %3$s is waiting for review here. Pulling replaces the post, and that waiting update is thrown away.', 'sceneshifter' ), $who, $waiting['label'], $when )
+				/* translators: 1: person, 2: environment name, 3: date and time, 4: environment name. */
+				: sprintf( __( 'An update %1$s pushed from %2$s on %3$s is still waiting for review on %4$s. This push replaces it.', 'sceneshifter' ), $who, $waiting['label'], $when, $other );
+		}
 		$where = $this->pull ? __( 'This site', 'sceneshifter' ) : $other;
 		foreach ( $item->checks as $check ) {
 			$names = implode( ', ', array_map( 'strval', is_array( $check['names'] ?? null ) ? $check['names'] : array() ) );

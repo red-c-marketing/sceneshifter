@@ -277,7 +277,7 @@ final class Plugin {
 		if ( null === $syncMap || null === $self ) {
 			return null;
 		}
-		return new PreflightResponder( self::PACKAGE_FORMAT, $syncMap->map(), new WpTargetLookup(), new WpSiteFacts( new Packager( $self ) ) );
+		return new PreflightResponder( self::PACKAGE_FORMAT, $syncMap->map(), new WpTargetLookup(), new WpSiteFacts( new Packager( $self ) ), $this->postWriter() );
 	}
 
 	/**
@@ -302,7 +302,8 @@ final class Plugin {
 			DbLogStore::forSite( $self->id ),
 			fn( int $id ): array => $this->findings( $id ),
 			null,
-			$hold ?? $this->options->pushSettings()->holdsUpdates()
+			$hold ?? $this->options->pushSettings()->holdsUpdates(),
+			$this->mediaFiles()
 		);
 	}
 

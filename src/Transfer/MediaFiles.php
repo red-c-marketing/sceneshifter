@@ -59,6 +59,13 @@ interface MediaFiles {
 	public function copiedBy( string $copied ): array;
 
 	/**
+	 * Records that another push uses an attachment an earlier push copied
+	 * here, so undoing either one can delete it once nothing uses it. Does
+	 * nothing for media Sceneshifter didn't copy.
+	 */
+	public function alsoCopiedBy( int $id, string $copied ): void;
+
+	/**
 	 * Whether anything other than one post (and its revisions) still uses
 	 * an attachment: as a featured image, in content, in custom fields, term
 	 * meta or ACF options. Errs towards yes.

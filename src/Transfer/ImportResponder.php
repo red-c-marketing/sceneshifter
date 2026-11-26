@@ -62,6 +62,7 @@ final class ImportResponder {
 	 * @param callable(int): list<Finding> $findings  Links to other environments in a post.
 	 * @param (callable(): int)|null       $clock     Current Unix time.
 	 * @param bool                         $hold      Hold updates to published posts for review (Settings → Push).
+	 * @param MediaFiles|null              $files     Media here, to record which pushes use copied files.
 	 */
 	public function __construct(
 		private readonly string $format,
@@ -73,7 +74,8 @@ final class ImportResponder {
 		private readonly LogStore $log,
 		callable $findings,
 		?callable $clock = null,
-		private readonly bool $hold = false
+		private readonly bool $hold = false,
+		private readonly ?MediaFiles $files = null
 	) {
 		$this->findings = $findings;
 		$this->clock    = $clock ?? 'time';
@@ -120,7 +122,11 @@ final class ImportResponder {
 				return array( 'error' => self::CHANGED );
 			}
 			if ( $this->hold && in_array( $before['status'], self::HELD_STATUSES, true ) ) {
-				return $this->holdUpdate( $sender, $transfer, $package, $localId, $payload, $metaKeys, $now );
+				$held = $this->holdUpdate( $sender, $transfer, $package, $localId, $payload, $metaKeys, $now );
+				if ( ! isset( $held['error'] ) ) {
+					$this->recordMedia( $resolved['attachments'], $transfer, $package->id );
+				}
+				return $held;
 			}
 			$previous = $this->map->get( $sender, MapEntry::POST, $localId );
 			$snapshot = new Snapshot( 0, $transfer, $sender, $localId, false, $this->writer->snapshot( $localId ) + array( 'map' => null === $previous ? null : self::mapRow( $previous ) ), $now );
@@ -161,6 +167,11 @@ final class ImportResponder {
 		if ( null === $snapshot ) {
 			$snapshot = new Snapshot( 0, $transfer, $sender, $id, true, array(), $now );
 			$snapshot = $snapshot->withId( $this->snapshots->save( $snapshot ) );
+		}
+
+		$this->recordMedia( $resolved['attachments'], $transfer, $package->id );
+		if ( null !== $localId ) {
+			$this->dropWaiting( $localId );
 		}
 
 		$after    = $this->facts->state( $id, $metaKeys );
@@ -283,6 +294,50 @@ final class ImportResponder {
 			'links_total' => count( $findings ),
 			'urls'        => $this->writer->urls( $id ),
 		);
+	}
+
+	/**
+	 * An update written straight to the post (holding is off now, the post
+	 * isn't published any more, or it was pulled) makes any update still
+	 * waiting for review out of date. Applying that later would undo this
+	 * one, so it is thrown away, as a newer held update would replace it.
+	 */
+	private function dropWaiting( int $postId ): void {
+		$heldId = $this->writer->heldFor( $postId );
+		$held   = null === $heldId ? null : $this->writer->held( $heldId );
+		if ( null === $heldId || null === $held ) {
+			return;
+		}
+		try {
+			$this->writer->discard( $heldId, false );
+		} catch ( \Throwable $e ) {
+			return;
+		}
+		$record = $held['record'];
+		if ( is_string( $record['transfer'] ?? null ) && is_string( $record['sister'] ?? null ) ) {
+			$replaced = $this->log->find( $record['transfer'], LogEntry::IN, $record['sister'], $postId );
+			if ( null !== $replaced && LogEntry::HELD === $replaced->result ) {
+				$this->log->setResult( $replaced->id, LogEntry::UNDONE, __( 'a later update', 'sceneshifter' ) );
+			}
+		}
+	}
+
+	/**
+	 * Files an earlier push copied here and this one uses are recorded
+	 * against this push too. Otherwise undoing the earlier push first (which
+	 * keeps a file this post still uses) and then this one would leave the
+	 * file behind with nothing using it.
+	 *
+	 * @param array<int, array{id: int, how: string, file: string}|null> $attachments Resolver::resolve()['attachments'].
+	 */
+	private function recordMedia( array $attachments, string $transfer, int $sourcePost ): void {
+		$copied = MediaReceiver::copied( $transfer, $sourcePost );
+		if ( null === $this->files || null === $copied ) {
+			return;
+		}
+		foreach ( array_filter( $attachments ) as $found ) {
+			$this->files->alsoCopiedBy( $found['id'], $copied );
+		}
 	}
 
 	/**

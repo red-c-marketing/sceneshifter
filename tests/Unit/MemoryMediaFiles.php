@@ -99,7 +99,15 @@ final class MemoryMediaFiles implements MediaFiles {
 	}
 
 	public function copiedBy( string $copied ): array {
-		return array_keys( array_filter( $this->attachments, static fn( array $a ): bool => ( $a['meta']['copied'] ?? null ) === $copied ) );
+		return array_keys( array_filter( $this->attachments, static fn( array $a ): bool => ( $a['meta']['copied'] ?? null ) === $copied || in_array( $copied, (array) ( $a['meta']['also'] ?? array() ), true ) ) );
+	}
+
+	public function alsoCopiedBy( int $id, string $copied ): void {
+		$first = $this->attachments[ $id ]['meta']['copied'] ?? '';
+		if ( '' === $first || $first === $copied || in_array( $copied, (array) ( $this->attachments[ $id ]['meta']['also'] ?? array() ), true ) ) {
+			return;
+		}
+		$this->attachments[ $id ]['meta']['also'][] = $copied;
 	}
 
 	public function inUse( int $id, int $ignorePost ): bool {

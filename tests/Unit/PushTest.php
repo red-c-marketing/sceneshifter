@@ -234,6 +234,38 @@ final class PushTest extends TestCase {
 		$this->assertNotNull( $dev->map->get( 'staging', MapEntry::POST, 5 ) );
 	}
 
+	public function test_a_file_two_posts_share_is_deleted_once_both_are_undone(): void {
+		[ $staging, $dev ] = $this->paired();
+		$about  = self::about();
+		$team   = new Package( 14, '55555555-5555-4555-8555-555555555555', 'team', array( 'post_title' => 'Team', 'post_name' => 'team', 'featured' => 5 ) + $about->fields, array(), array(), array(), array(), array(), array( 5 => array( 'file' => '2024/05/a.jpg', 'size' => 3, 'title' => 'A' ) ), array() );
+		$runner = $this->runner( $dev, array( 11 => $about, 14 => $team ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), null, 'Ann' );
+		$runner->run( 'staging', 14, self::TRANSFER, array(), null, 'Ann' );
+		$this->assertSame( 1, count( $staging->mediaFiles->attachments ), 'The second post reuses the file the first one copied.' );
+		$this->assertSame( array( self::TRANSFER . '/14' ), $staging->mediaFiles->attachments[700]['meta']['also'] ?? null, 'And is recorded against it too.' );
+
+		// Undo the first: the second still uses the file, so it stays.
+		$staging->mediaFiles->used = array( 700 );
+		$this->assertSame( 0, $runner->undo( $dev->log->get( 1 ), false, 'Bo' )['removed'] ?? null );
+		$this->assertArrayHasKey( 700, $staging->mediaFiles->attachments );
+
+		// Undo the second: nothing uses it now, so it goes.
+		$staging->mediaFiles->used = array();
+		$this->assertSame( 1, $runner->undo( $dev->log->get( 2 ), false, 'Bo' )['removed'] ?? null );
+		$this->assertSame( array( 700 ), $staging->mediaFiles->deleted );
+	}
+
+	public function test_media_sceneshifter_did_not_copy_is_never_recorded(): void {
+		[ $staging, $dev ] = $this->paired();
+		$staging->lookup->media( 701, '2024/05/a.jpg', 3 );
+		$staging->mediaFiles->attachments[701] = array(
+			'file' => '2024/05/a.jpg',
+			'meta' => array(),
+		);
+		$this->runner( $dev, array( 11 => self::about() ), self::mediaA() )->run( 'staging', 11, self::TRANSFER, array(), null, 'Ann' );
+		$this->assertSame( array(), $staging->mediaFiles->attachments[701]['meta'], 'A file that was already here is never deleted by an undo.' );
+	}
+
 	public function test_a_clashing_file_is_renamed_when_the_target_allows_it(): void {
 		[ $staging, $dev ] = $this->paired();
 		$staging->mediaFiles->files['2024/05/a.jpg'] = 'a different picture';
@@ -354,6 +386,43 @@ final class PushTest extends TestCase {
 		$this->assertSame( 'About us', $staging->facts->packages[201]->title() );
 	}
 
+	public function test_the_preview_says_a_waiting_update_would_be_replaced(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$staging->holdUpdates = true;
+		$this->assertNull( $this->previewer( $dev, array( 11 => self::about() ) )->build( 'staging', array( 11 ) )['items'][0]->waitingReview() );
+
+		$this->runner( $dev, array( 11 => self::about() ), self::mediaA() )->run( 'staging', 11, self::TRANSFER, array(), 201, 'Ann' );
+		$waiting = $this->previewer( $dev, array( 11 => self::about() ) )->build( 'staging', array( 11 ) )['items'][0]->waitingReview();
+
+		$this->assertSame(
+			array(
+				'sister' => 'dev',
+				'label'  => Fixtures::registry()->get( 'dev' )?->label,
+				'user'   => 'Ann',
+				'at'     => 1700000000,
+			),
+			$waiting
+		);
+	}
+
+	public function test_an_update_written_straight_away_throws_out_a_waiting_one(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$staging->holdUpdates = true;
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), 201, 'Ann' );
+		$this->assertCount( 1, $staging->writer->heldCopies );
+
+		$staging->holdUpdates = false;
+		$result = $runner->run( 'staging', 11, '55555555-5555-4555-8555-555555555555', array(), 201, 'Ann' );
+
+		$this->assertFalse( $result->isHeld() );
+		$this->assertSame( array(), $staging->writer->heldCopies, 'Applying the older update later would undo this one.' );
+		$this->assertSame( array( LogEntry::UNDONE, 'a later update' ), array( $staging->log->get( 1 )?->result, $staging->log->get( 1 )?->message ) );
+		$this->assertSame( LogEntry::DONE, $staging->log->get( 2 )?->result );
+	}
+
 	public function test_old_log_entries_and_snapshots_are_pruned(): void {
 		$day       = 86400;
 		$now       = 400 * $day;
@@ -455,6 +524,22 @@ final class PushTest extends TestCase {
 	 * @param array<int, Package>       $packages
 	 * @param array<int, list<Finding>> $findings
 	 */
+	/**
+	 * @param array<int, Package> $packages
+	 */
+	private function previewer( SisterHarness $dev, array $packages ): PushPreview {
+		return new PushPreview(
+			Fixtures::registry()->get( 'dev' ),
+			Fixtures::registry(),
+			$dev->sisters->transport(),
+			'1',
+			static fn( int $id ): ?Package => $packages[ $id ] ?? null,
+			static fn( int $id ): array => array(),
+			static fn( string $content ): ?array => null,
+			'json_encode'
+		);
+	}
+
 	private function runner( SisterHarness $dev, array $packages, MemoryMediaSource $media, array $findings = array() ): PushRunner {
 		$packager = static fn( int $id ): ?Package => $packages[ $id ] ?? null;
 		$preview  = new PushPreview(

@@ -20,7 +20,7 @@ final class PreviewItem {
 	/**
 	 * @param Package                                                             $package     As on the source.
 	 * @param Package|null                                                        $rewritten   With IDs and URLs for the target; null when the preflight failed for it.
-	 * @param array<string, mixed>|null                                           $target      The post it would replace: id, how, status, title, modified, hash, synced_hash, synced_at.
+	 * @param array<string, mixed>|null                                           $target      The post it would replace: id, how, status, title, modified, hash, synced_hash, synced_at, held.
 	 * @param int|null                                                            $blockedBy   A post at the same address on the target, already linked to something else.
 	 * @param list<string>|null                                                   $changed     ContentHash parts that would change; null for a new post.
 	 * @param string|null                                                         $conflict    NEVER_SYNCED or EDITED, for an update.
@@ -62,6 +62,26 @@ final class PreviewItem {
 	 */
 	public function overwritesUnlinked(): bool {
 		return Resolver::PATH === ( $this->target['how'] ?? null );
+	}
+
+	/**
+	 * An earlier update waiting for review for the post it would update,
+	 * which this one replaces: sister, label, user, at.
+	 *
+	 * @return array{sister: string, label: string, user: string, at: int}|null
+	 */
+	public function waitingReview(): ?array {
+		$held = $this->target['held'] ?? null;
+		if ( ! is_array( $held ) ) {
+			return null;
+		}
+		$sister = is_string( $held['sister'] ?? null ) ? $held['sister'] : '';
+		return array(
+			'sister' => $sister,
+			'label'  => is_string( $held['label'] ?? null ) ? $held['label'] : $sister,
+			'user'   => is_string( $held['user'] ?? null ) ? $held['user'] : '',
+			'at'     => is_int( $held['at'] ?? null ) ? $held['at'] : 0,
+		);
 	}
 
 	/**

@@ -170,7 +170,7 @@ final class SisterHarness {
 			return $this->signed( $headers, $sender, $this->receiver()->commit( $sender, (array) json_decode( $body, true ) ) );
 		}
 		if ( PreflightResponder::ROUTE === $route && 'POST' === $method ) {
-			$responder = new PreflightResponder( '1', $this->map, $this->lookup, $this->facts );
+			$responder = new PreflightResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer );
 			return $this->signed( $headers, $sender, $responder->preflight( $sender, (array) json_decode( $body, true ) ) );
 		}
 		if ( ExportResponder::SEARCH_ROUTE === $route && 'POST' === $method ) {
@@ -200,7 +200,7 @@ final class SisterHarness {
 	}
 
 	public function importer(): ImportResponder {
-		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, $this->holdUpdates );
+		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, $this->holdUpdates, $this->mediaFiles );
 	}
 
 	public function exporter(): ExportResponder {
@@ -247,9 +247,9 @@ final class SisterHarness {
 			$this->registry,
 			$this->sisters->transport(),
 			'1',
-			new PreflightResponder( '1', $this->map, $this->lookup, $this->facts ),
+			new PreflightResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer ),
 			$this->receiver(),
-			new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, false ),
+			new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, false, $this->mediaFiles ),
 			$this->log,
 			static fn( string $content ): ?array => null,
 			'json_encode',

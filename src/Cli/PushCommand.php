@@ -112,6 +112,10 @@ final class PushCommand {
 				WP_CLI::warning( sprintf( '#%d %s: %s has a post at the same address (ID %d) that was never linked to it. Left out; add --overwrite-unlinked to overwrite it.', $item->package->id, $item->package->title(), $target->label, (int) ( $item->target['id'] ?? 0 ) ) );
 				continue;
 			}
+			$waiting = $item->waitingReview();
+			if ( null !== $waiting ) {
+				WP_CLI::warning( sprintf( '#%d %s: an update %s pushed from %s on %s is still waiting for review on %s. This push replaces it.', $item->package->id, $item->package->title(), '' === $waiting['user'] ? 'someone' : $waiting['user'], $waiting['label'], gmdate( 'Y-m-d H:i', $waiting['at'] ) . ' UTC', $target->label ) );
+			}
 			$queue[] = $item;
 		}
 		if ( ! empty( $assoc['dry-run'] ) || array() === $queue ) {

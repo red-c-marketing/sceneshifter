@@ -30,7 +30,8 @@ final class PreflightResponder {
 		private readonly string $format,
 		private readonly MapStore $map,
 		private readonly TargetLookup $lookup,
-		private readonly SiteFacts $facts
+		private readonly SiteFacts $facts,
+		private readonly ?PostWriter $writer = null
 	) {}
 
 	/**
@@ -95,6 +96,7 @@ final class PreflightResponder {
 					'hash'        => ContentHash::overall( $state['parts'] ),
 					'synced_hash' => $entry?->hash,
 					'synced_at'   => $entry?->syncedAt,
+					'held'        => $this->waiting( $resolved['target']['id'] ),
 				);
 			}
 		}
@@ -108,6 +110,28 @@ final class PreflightResponder {
 			'terms'       => $resolved['terms'],
 			'author'      => $resolved['author'],
 			'checks'      => $checks,
+		);
+	}
+
+	/**
+	 * An earlier update waiting for review for this post, which this one
+	 * would replace: who pushed it, from where and when.
+	 *
+	 * @return array{sister: string, user: string, at: int}|null
+	 */
+	private function waiting( int $postId ): ?array {
+		if ( null === $this->writer ) {
+			return null;
+		}
+		$heldId = $this->writer->heldFor( $postId );
+		$record = null === $heldId ? null : $this->writer->held( $heldId )['record'] ?? null;
+		if ( ! is_array( $record ) ) {
+			return null;
+		}
+		return array(
+			'sister' => is_string( $record['sister'] ?? null ) ? $record['sister'] : '',
+			'user'   => is_string( $record['user'] ?? null ) ? $record['user'] : '',
+			'at'     => is_int( $record['at'] ?? null ) ? $record['at'] : 0,
 		);
 	}
 

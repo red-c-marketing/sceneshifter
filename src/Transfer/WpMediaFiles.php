@@ -19,7 +19,7 @@ final class WpMediaFiles implements MediaFiles {
 	private const MAX_SIZE = 536870912;
 	private const STALE    = DAY_IN_SECONDS;
 
-	/** Which push copied an attachment here: transfer/source post ID. */
+	/** Which pushes copied or use an attachment here: transfer/source post ID, one row each. */
 	public const COPIED_META = '_sceneshifter_copied';
 
 	/**
@@ -159,6 +159,18 @@ final class WpMediaFiles implements MediaFiles {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.SlowDBQuery
 		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s", self::COPIED_META, $copied ) );
 		return array_values( array_filter( array_map( 'intval', $ids ), fn( int $id ): bool => $this->attachmentExists( $id ) ) );
+	}
+
+	public function alsoCopiedBy( int $id, string $copied ): void {
+		if ( ! $this->attachmentExists( $id ) ) {
+			return;
+		}
+		$values = get_post_meta( $id, self::COPIED_META, false );
+		$values = is_array( $values ) ? $values : array();
+		if ( array() === $values || in_array( $copied, $values, true ) ) {
+			return;
+		}
+		add_post_meta( $id, self::COPIED_META, $copied );
 	}
 
 	public function inUse( int $id, int $ignorePost ): bool {

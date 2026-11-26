@@ -176,6 +176,10 @@ final class PushPreview {
 		$moves       = MediaPath::moves( $files + self::files( $answer['attachments'] ?? null ), $package->attachments );
 		$terms       = self::matches( $answer['term_refs'] ?? null );
 		$targetPost  = is_array( $answer['target'] ?? null ) && is_int( $answer['target']['id'] ?? null ) ? $answer['target'] : null;
+		if ( null !== $targetPost && is_array( $targetPost['held'] ?? null ) ) {
+			$heldBy                      = (string) ( $targetPost['held']['sister'] ?? '' );
+			$targetPost['held']['label'] = $this->registry->get( $heldBy )->label ?? $heldBy;
+		}
 		if ( null !== $targetPost ) {
 			$posts[ $package->id ] = $targetPost['id'];
 		}
