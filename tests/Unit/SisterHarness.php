@@ -18,6 +18,9 @@ use RedC\Sceneshifter\SyncMap\Responder;
 use RedC\Sceneshifter\Log\MemoryLogStore;
 use RedC\Sceneshifter\Transfer\ImportResponder;
 use RedC\Sceneshifter\Transfer\CopiedMedia;
+use RedC\Sceneshifter\Transfer\ExportResponder;
+use RedC\Sceneshifter\Transfer\Package;
+use RedC\Sceneshifter\Transfer\PullRunner;
 use RedC\Sceneshifter\Transfer\HeldUpdates;
 use RedC\Sceneshifter\Transfer\Rollback;
 use RedC\Sceneshifter\Transfer\MediaReceiver;
@@ -46,6 +49,15 @@ final class SisterHarness {
 
 	/** @var array<int, list<\RedC\Sceneshifter\Scanner\Finding>> Links to other environments found in a written post. */
 	public array $findings = array();
+
+	/** @var array<int, Package> Posts this site can be pulled from, by ID. */
+	public array $packages = array();
+
+	/** @var array<int, list<\RedC\Sceneshifter\Scanner\Finding>> Links to other environments in those posts. */
+	public array $sourceFindings = array();
+
+	/** Media this site can be pulled from. */
+	public MemoryMediaSource $source;
 
 	/** Hold pushed updates to published posts for review (Settings → Push). */
 	public bool $holdUpdates = false;
@@ -76,6 +88,7 @@ final class SisterHarness {
 		$this->snapshots  = new MemorySnapshotStore();
 		$this->mediaFiles = new MemoryMediaFiles();
 		$this->log        = new MemoryLogStore();
+		$this->source     = new MemoryMediaSource();
 		$this->boot( $registry, $active );
 		$site = $registry->get( $siteId );
 		if ( null !== $site ) {
@@ -160,6 +173,18 @@ final class SisterHarness {
 			$responder = new PreflightResponder( '1', $this->map, $this->lookup, $this->facts );
 			return $this->signed( $headers, $sender, $responder->preflight( $sender, (array) json_decode( $body, true ) ) );
 		}
+		if ( ExportResponder::SEARCH_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->exporter()->search( $sender, (array) json_decode( $body, true ) ) );
+		}
+		if ( ExportResponder::EXPORT_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->exporter()->export( $sender, (array) json_decode( $body, true ) ) );
+		}
+		if ( ExportResponder::MEDIA_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->exporter()->mediaRead( $sender, (array) json_decode( $body, true ) ) );
+		}
+		if ( ExportResponder::PULLED_ROUTE === $route && 'POST' === $method ) {
+			return $this->signed( $headers, $sender, $this->exporter()->pulled( $sender, (array) json_decode( $body, true ) ) );
+		}
 		if ( Responder::LINK_ROUTE === $route && 'POST' === $method ) {
 			return $this->signed( $headers, $sender, $this->responder()->link( $sender, (array) json_decode( $body, true ), time() ) );
 		}
@@ -176,6 +201,60 @@ final class SisterHarness {
 
 	public function importer(): ImportResponder {
 		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, $this->holdUpdates );
+	}
+
+	public function exporter(): ExportResponder {
+		return new ExportResponder(
+			'1',
+			function ( string $query, string $type, int $page, int $perPage ): array {
+				$found = array_values(
+					array_filter(
+						$this->packages,
+						static fn( Package $p ): bool => ( '' === $type || $p->type() === $type ) && ( '' === $query || false !== stripos( $p->title(), $query ) )
+					)
+				);
+				$items = array_map(
+					static fn( Package $p ): array => array(
+						'id'       => $p->id,
+						'title'    => $p->title(),
+						'type'     => $p->type(),
+						'status'   => (string) ( $p->fields['post_status'] ?? '' ),
+						'modified' => '',
+						'path'     => $p->path,
+					),
+					array_slice( $found, ( $page - 1 ) * $perPage, $perPage )
+				);
+				return array(
+					'items' => $items,
+					'total' => count( $found ),
+				);
+			},
+			fn( int $id ): ?Package => $this->packages[ $id ] ?? null,
+			fn( int $id ): ?string => $this->packages[ $id ]->uuid ?? null,
+			fn( int $id ): array => $this->sourceFindings[ $id ] ?? array(),
+			$this->source,
+			$this->map,
+			$this->log,
+			static fn(): int => 1700000000
+		);
+	}
+
+	public function puller(): PullRunner {
+		$self = $this->registry->get( $this->siteId );
+		assert( null !== $self );
+		return new PullRunner(
+			$self,
+			$this->registry,
+			$this->sisters->transport(),
+			'1',
+			new PreflightResponder( '1', $this->map, $this->lookup, $this->facts ),
+			$this->receiver(),
+			new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, false ),
+			$this->log,
+			static fn( string $content ): ?array => null,
+			'json_encode',
+			static fn(): int => 1700000000
+		);
 	}
 
 	public function rollback(): Rollback {

@@ -1,7 +1,7 @@
 <?php
 /**
  * wp sceneshifter push, log and rollback: pushing from the command line, for
- * testing and scripted releases.
+ * testing and scripted releases. Log and rollback cover pulls too.
  *
  * @package RedC\Sceneshifter
  */
@@ -182,7 +182,7 @@ final class PushCommand {
 					'who'       => $e->user,
 					'post'      => LogEntry::OUT === $e->direction ? $e->sourceId : $e->targetId,
 					'title'     => $e->title,
-					'result'    => $e->result . ( LogEntry::DONE === $e->result ? ( 'held' === ( $e->details['status'] ?? null ) ? ' (held for review there)' : ( $e->created ? ' (created)' : ' (updated)' ) ) : '' ),
+					'result'    => $e->result . ( ! empty( $e->details['pulled'] ) ? ' (pulled)' : '' ) . ( LogEntry::DONE === $e->result ? ( 'held' === ( $e->details['status'] ?? null ) ? ' (held for review there)' : ( $e->created ? ' (created)' : ' (updated)' ) ) : '' ),
 					'message'   => (string) $e->message,
 				),
 				$log->recent( max( 1, (int) ( $assoc['limit'] ?? 20 ) ) )
@@ -222,6 +222,9 @@ final class PushCommand {
 			$code    = empty( $reply['undone'] ) ? (string) ( $reply['error'] ?? Rollback::FAILED ) : null;
 			$detail  = is_string( $reply['message'] ?? null ) ? $reply['message'] : null;
 			$removed = is_array( $reply['media_removed'] ?? null ) ? count( $reply['media_removed'] ) : 0;
+			if ( null === $code && ! empty( $entry->details['pulled'] ) ) {
+				$this->plugin->pullRunner()?->undone( $entry, $reply, $user );
+			}
 		}
 		match ( $code ) {
 			null                    => WP_CLI::success( 0 === $removed ? 'Undone.' : sprintf( 'Undone. Deleted %d copied file(s) that nothing else used.', $removed ) ),

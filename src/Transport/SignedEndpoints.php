@@ -75,7 +75,7 @@ final class SignedEndpoints {
 				'permission_callback' => array( $this, 'verified' ),
 			)
 		);
-		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link', '/preflight' => 'preflight', '/import' => 'import', '/media/chunk' => 'mediaChunk', '/media/commit' => 'mediaCommit', '/rollback' => 'rollback' ) as $route => $callback ) {
+		foreach ( array( '/map/inventory' => 'inventory', '/map/link' => 'link', '/preflight' => 'preflight', '/import' => 'import', '/media/chunk' => 'mediaChunk', '/media/commit' => 'mediaCommit', '/rollback' => 'rollback', '/export/search' => 'exportSearch', '/export' => 'export', '/media/read' => 'mediaRead', '/pulled' => 'pulled' ) as $route => $callback ) {
 			register_rest_route(
 				RestController::NAMESPACE,
 				$route,
@@ -229,6 +229,42 @@ final class SignedEndpoints {
 			return self::notFound();
 		}
 		return $this->signed( $request, $sender, $receiver->commit( $sender, self::payload( $request ) ) );
+	}
+
+	public function exportSearch( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender    = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$responder = $this->plugin->exportResponder();
+		if ( null === $sender || null === $responder ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $responder->search( $sender, self::payload( $request ) ) );
+	}
+
+	public function export( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender    = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$responder = $this->plugin->exportResponder();
+		if ( null === $sender || null === $responder ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $responder->export( $sender, self::payload( $request ) ) );
+	}
+
+	public function mediaRead( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender    = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$responder = $this->plugin->exportResponder();
+		if ( null === $sender || null === $responder ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $responder->mediaRead( $sender, self::payload( $request ) ) );
+	}
+
+	public function pulled( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$sender    = $this->senders[ spl_object_id( $request ) ] ?? null;
+		$responder = $this->plugin->exportResponder();
+		if ( null === $sender || null === $responder ) {
+			return self::notFound();
+		}
+		return $this->signed( $request, $sender, $responder->pulled( $sender, self::payload( $request ) ) );
 	}
 
 	public function preflight( WP_REST_Request $request ): WP_REST_Response|WP_Error {

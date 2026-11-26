@@ -14,6 +14,7 @@ use RedC\Sceneshifter\Admin\AdminBar;
 use RedC\Sceneshifter\Admin\HeldNotices;
 use RedC\Sceneshifter\Admin\LogPage;
 use RedC\Sceneshifter\Admin\Notices;
+use RedC\Sceneshifter\Admin\PullPage;
 use RedC\Sceneshifter\Admin\PushPage;
 use RedC\Sceneshifter\Admin\RegistryTransfer;
 use RedC\Sceneshifter\Admin\SettingsPage;
@@ -25,6 +26,7 @@ use RedC\Sceneshifter\Check\PublishGuard;
 use RedC\Sceneshifter\Check\RestController;
 use RedC\Sceneshifter\Cli\Command;
 use RedC\Sceneshifter\Cli\MapCommand;
+use RedC\Sceneshifter\Cli\PullCommand;
 use RedC\Sceneshifter\Cli\PushCommand;
 use RedC\Sceneshifter\Pairing\SecretMaterial;
 use RedC\Sceneshifter\Pairing\Sisters;
@@ -50,6 +52,9 @@ use RedC\Sceneshifter\Log\DbLogStore;
 use RedC\Sceneshifter\Log\Retention;
 use RedC\Sceneshifter\Transfer\DbSnapshotStore;
 use RedC\Sceneshifter\Transfer\CopiedMedia;
+use RedC\Sceneshifter\Transfer\ExportResponder;
+use RedC\Sceneshifter\Transfer\Package;
+use RedC\Sceneshifter\Transfer\PullRunner;
 use RedC\Sceneshifter\Transfer\HeldUpdates;
 use RedC\Sceneshifter\Transfer\Rollback;
 use RedC\Sceneshifter\Transfer\ImportResponder;
@@ -79,6 +84,9 @@ final class Plugin {
 	 * different format refuse each other's packages.
 	 */
 	public const PACKAGE_FORMAT = '1';
+
+	/** Statuses another environment can pull. */
+	public const PULLABLE_STATUSES = array( 'publish', 'draft', 'pending', 'private', 'future' );
 
 	private static ?self $instance = null;
 
@@ -160,6 +168,9 @@ final class Plugin {
 			\WP_CLI::add_command( 'sceneshifter rollback', array( $push, 'rollback' ) );
 			\WP_CLI::add_command( 'sceneshifter apply', array( $push, 'apply' ) );
 			\WP_CLI::add_command( 'sceneshifter discard', array( $push, 'discard' ) );
+			$pull = new PullCommand( $this );
+			\WP_CLI::add_command( 'sceneshifter pull', array( $pull, 'pull' ) );
+			\WP_CLI::add_command( 'sceneshifter search', array( $pull, 'search' ) );
 		}
 
 		if ( is_admin() ) {
@@ -183,6 +194,7 @@ final class Plugin {
 			( new ClassicMetaBox( $this ) )->register();
 			( new EditorAssets( $this ) )->register();
 			( new PushPage( $this ) )->register();
+			( new PullPage( $this ) )->register();
 			( new LogPage( $this ) )->register();
 			( new HeldNotices( $this ) )->register();
 		}
@@ -269,9 +281,12 @@ final class Plugin {
 	}
 
 	/**
-	 * Target side of a push: answers POST /import. Null when inactive.
+	 * Target side of a push, and of a pull started here: answers POST
+	 * /import. Null when inactive.
+	 *
+	 * @param bool|null $hold Hold updates to published posts for review; null for this site's Push setting.
 	 */
-	public function importResponder(): ?ImportResponder {
+	public function importResponder( ?bool $hold = null ): ?ImportResponder {
 		$syncMap = $this->syncMap();
 		$self    = $this->sisters()->self();
 		if ( null === $syncMap || null === $self ) {
@@ -287,7 +302,7 @@ final class Plugin {
 			DbLogStore::forSite( $self->id ),
 			fn( int $id ): array => $this->findings( $id ),
 			null,
-			$this->options->pushSettings()->holdsUpdates()
+			$hold ?? $this->options->pushSettings()->holdsUpdates()
 		);
 	}
 
@@ -362,21 +377,122 @@ final class Plugin {
 			self::PACKAGE_FORMAT,
 			$preview,
 			array( $packager, 'build' ),
-			static function ( int $id ): ?string {
-				if ( null === get_post( $id ) ) {
-					return null;
-				}
-				$uuid = get_post_meta( $id, Uuid::META_KEY, true );
-				if ( Uuid::isValid( $uuid ) ) {
-					return $uuid;
-				}
-				$uuid = Uuid::generate();
-				update_post_meta( $id, Uuid::META_KEY, $uuid );
-				return $uuid;
-			},
+			array( self::class, 'ensureUuid' ),
 			$syncMap->map(),
 			new WpMediaSource(),
 			DbLogStore::forSite( $self->id )
+		);
+	}
+
+	/**
+	 * Gives a post a Sceneshifter ID if it has none, and returns it.
+	 */
+	public static function ensureUuid( int $id ): ?string {
+		if ( null === get_post( $id ) ) {
+			return null;
+		}
+		$uuid = get_post_meta( $id, Uuid::META_KEY, true );
+		if ( Uuid::isValid( $uuid ) ) {
+			return $uuid;
+		}
+		$uuid = Uuid::generate();
+		update_post_meta( $id, Uuid::META_KEY, $uuid );
+		return $uuid;
+	}
+
+	/**
+	 * Source side of a pull: answers the site that is pulling. Null when inactive.
+	 */
+	public function exportResponder(): ?ExportResponder {
+		$self    = $this->sisters()->self();
+		$syncMap = $this->syncMap();
+		if ( null === $self || null === $syncMap ) {
+			return null;
+		}
+		$packager = new Packager( $self );
+		$types    = $this->options->postTypes();
+		return new ExportResponder(
+			self::PACKAGE_FORMAT,
+			static function ( string $query, string $type, int $page, int $perPage ) use ( $types ): array {
+				$args  = array(
+					'post_type'              => '' !== $type && in_array( $type, $types, true ) ? $type : $types,
+					'post_status'            => self::PULLABLE_STATUSES,
+					'posts_per_page'         => $perPage,
+					'paged'                  => $page,
+					'orderby'                => 'modified',
+					'order'                  => 'DESC',
+					'ignore_sticky_posts'    => true,
+					'update_post_term_cache' => false,
+					// Updates waiting for review are copies, not content of their own.
+					'meta_query'             => array( // phpcs:ignore WordPress.DB.SlowDBQuery
+						array(
+							'key'     => WpPostWriter::HELD_FOR,
+							'compare' => 'NOT EXISTS',
+						),
+					),
+				);
+				if ( '' !== $query ) {
+					$args['s'] = $query;
+				}
+				$found = new \WP_Query( $args );
+				$items = array();
+				foreach ( $found->posts as $post ) {
+					if ( $post instanceof \WP_Post ) {
+						$items[] = array(
+							'id'       => $post->ID,
+							'title'    => get_the_title( $post ),
+							'type'     => $post->post_type,
+							'status'   => $post->post_status,
+							'modified' => (string) get_post_modified_time( 'c', true, $post ),
+							'path'     => WpContentIndex::path( $post ),
+						);
+					}
+				}
+				return array(
+					'items' => $items,
+					'total' => (int) $found->found_posts,
+				);
+			},
+			static function ( int $id ) use ( $packager, $types ): ?Package {
+				$post = get_post( $id );
+				if ( ! $post instanceof \WP_Post || ! in_array( $post->post_type, $types, true ) || ! in_array( $post->post_status, self::PULLABLE_STATUSES, true ) || '' !== (string) get_post_meta( $id, WpPostWriter::HELD_FOR, true ) ) {
+					return null;
+				}
+				return $packager->build( $id );
+			},
+			static function ( int $id ) use ( $types ): ?string {
+				$post = get_post( $id );
+				return $post instanceof \WP_Post && in_array( $post->post_type, $types, true ) ? self::ensureUuid( $id ) : null;
+			},
+			fn( int $id ): array => $this->findings( $id ),
+			new WpMediaSource(),
+			$syncMap->map(),
+			DbLogStore::forSite( $self->id )
+		);
+	}
+
+	/**
+	 * Pulls posts from another environment into this site. Null when inactive.
+	 */
+	public function pullRunner(): ?PullRunner {
+		$self      = $this->sisters()->self();
+		$preflight = $this->preflightResponder();
+		$receiver  = $this->mediaReceiver();
+		$importer  = $this->importResponder( false );
+		if ( null === $self || null === $preflight || null === $receiver || null === $importer || ! $this->identity->isActive() ) {
+			return null;
+		}
+		return new PullRunner(
+			$self,
+			$this->registry,
+			$this->sisters()->transport(),
+			self::PACKAGE_FORMAT,
+			$preflight,
+			$receiver,
+			$importer,
+			DbLogStore::forSite( $self->id ),
+			array( Packager::class, 'parse' ),
+			array( Packager::class, 'serialize' )
 		);
 	}
 

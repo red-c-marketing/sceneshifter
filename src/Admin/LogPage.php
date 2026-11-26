@@ -1,7 +1,7 @@
 <?php
 /**
- * Sceneshifter → Log: every post pushed from or to this site, newest first,
- * with an Undo button for pushes that worked.
+ * Sceneshifter → Log: every post pushed or pulled from or to this site,
+ * newest first, with an Undo button for transfers that worked.
  *
  * Undo on an outgoing entry asks the other site to undo it; on an incoming
  * entry it is undone here. Either way, if the post has been edited since,
@@ -74,7 +74,7 @@ final class LogPage {
 			$total   = $log->total();
 			$entries = $log->recent( self::PER_PAGE, ( $page - 1 ) * self::PER_PAGE );
 			if ( array() === $entries ) {
-				echo '<p>' . esc_html__( 'Nothing has been pushed from or to this site yet.', 'sceneshifter' ) . '</p></div>';
+				echo '<p>' . esc_html__( 'Nothing has been pushed or pulled from or to this site yet.', 'sceneshifter' ) . '</p></div>';
 				return;
 			}
 			?>
@@ -152,7 +152,7 @@ final class LogPage {
 			return;
 		}
 		$text = match ( $notice ) {
-			Rollback::ALREADY   => __( 'That push had already been undone.', 'sceneshifter' ),
+			Rollback::ALREADY   => __( 'That had already been undone.', 'sceneshifter' ),
 			Rollback::NOT_FOUND => __( 'There is nothing to undo for that entry. The snapshot may have been removed.', 'sceneshifter' ),
 			'denied'            => __( 'You do not have permission to undo pushes.', 'sceneshifter' ),
 			/* translators: %s: reason. */
@@ -228,6 +228,10 @@ final class LogPage {
 				'message' => is_string( $reply['message'] ?? null ) ? $reply['message'] : null,
 			);
 			$removed  = is_array( $reply['media_removed'] ?? null ) ? count( $reply['media_removed'] ) : 0;
+			if ( ! empty( $reply['undone'] ) && ! empty( $entry->details['pulled'] ) ) {
+				// Best effort: the pull is already undone here.
+				$this->plugin->pullRunner()?->undone( $entry, $reply, $user );
+			}
 		}
 		$args = null === $result['code'] ? array(
 			'undo'    => 'done',
@@ -270,6 +274,9 @@ final class LogPage {
 			$html .= '<br><span class="description">' . esc_html( $entry->message ) . '</span>';
 		}
 		$facts = array();
+		if ( ! empty( $entry->details['pulled'] ) ) {
+			$facts[] = LogEntry::IN === $entry->direction ? __( 'pulled by this site', 'sceneshifter' ) : __( 'pulled by the other site', 'sceneshifter' );
+		}
 		if ( is_string( $entry->details['applied_by'] ?? null ) && '' !== $entry->details['applied_by'] ) {
 			/* translators: %s: person's name. */
 			$facts[] = sprintf( __( 'held for review, applied by %s', 'sceneshifter' ), $entry->details['applied_by'] );
