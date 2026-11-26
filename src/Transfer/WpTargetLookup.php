@@ -81,6 +81,11 @@ final class WpTargetLookup implements TargetLookup {
 		) : null;
 	}
 
+	public function exists( int $id, bool $attachment ): bool {
+		$post = get_post( $id );
+		return $post instanceof \WP_Post && $this->live( $post ) && ( ! $attachment || 'attachment' === $post->post_type );
+	}
+
 	private function live( \WP_Post $post ): bool {
 		return in_array( $post->post_status, self::LIVE_STATUSES, true );
 	}

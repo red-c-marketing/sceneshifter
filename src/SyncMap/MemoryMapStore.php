@@ -28,6 +28,11 @@ final class MemoryMapStore implements MapStore {
 	}
 
 	public function save( MapEntry $entry ): void {
+		foreach ( $this->entries as $key => $other ) {
+			if ( $other->sister === $entry->sister && $other->objectType === $entry->objectType && $other->remoteId === $entry->remoteId && $other->localId !== $entry->localId ) {
+				unset( $this->entries[ $key ] );
+			}
+		}
 		$this->entries[ "{$entry->sister}|{$entry->objectType}|{$entry->localId}" ] = $entry;
 	}
 

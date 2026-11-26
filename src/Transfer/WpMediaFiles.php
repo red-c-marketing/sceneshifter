@@ -181,7 +181,17 @@ final class WpMediaFiles implements MediaFiles {
 		$listed = '%i:' . $num . ';%';
 		// Matches nothing when the file is unknown.
 		$stem = '' === $file ? '' : '%' . $wpdb->esc_like( MediaPath::stem( $file ) ) . '%';
-		$skip = $wpdb->prepare( "p.ID NOT IN (%d, %d) AND NOT ( p.post_type = 'revision' AND p.post_parent = %d )", $ignorePost, $id, $ignorePost );
+		// Posts an undo binned, and their revisions, don't count while they stay in the bin.
+		$binned = "SELECT b.post_id FROM {$wpdb->postmeta} b JOIN {$wpdb->posts} bp ON bp.ID = b.post_id WHERE b.meta_key = %s AND bp.post_status = 'trash'";
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $binned holds only table names and a placeholder.
+		$skip = $wpdb->prepare(
+			"p.ID NOT IN (%d, %d) AND NOT ( p.post_type = 'revision' AND p.post_parent = %d ) AND p.ID NOT IN ( {$binned} ) AND NOT ( p.post_type = 'revision' AND p.post_parent IN ( {$binned} ) )",
+			$ignorePost,
+			$id,
+			$ignorePost,
+			WpPostWriter::BINNED_META,
+			WpPostWriter::BINNED_META
+		);
 
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $skip is prepared above.
 		$queries = array(

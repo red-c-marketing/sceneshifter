@@ -54,6 +54,12 @@ interface TargetLookup {
 	public function termBySlug( string $taxonomy, string $slug ): ?int;
 
 	/**
+	 * Whether a post (or, with $attachment, an attachment) is still here and
+	 * not in the bin, so a sync map link to it can be trusted.
+	 */
+	public function exists( int $id, bool $attachment ): bool;
+
+	/**
 	 * @return array{id: int, name: string}|null
 	 */
 	public function userByEmail( string $email ): ?array;

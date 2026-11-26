@@ -138,7 +138,7 @@ final class PushCommand {
 		foreach ( $queue as $item ) {
 			$expected = is_int( $item->target['id'] ?? null ) ? $item->target['id'] : null;
 			$result   = $runner->run( $to, $item->package->id, $transfer, $options, $expected, $user );
-			$text     = wp_strip_all_tags( str_replace( array( '<br>', '</li><li>', '<ul class="sceneshifter-push-warnings"><li>' ), array( ' ', ' / ', ' — ' ), PushPage::resultHtml( $result, $target ) ) );
+			$text     = html_entity_decode( wp_strip_all_tags( str_replace( array( '<br>', '</li><li>', '<ul class="sceneshifter-push-warnings"><li>' ), array( ' ', ' / ', ' — ' ), PushPage::resultHtml( $result, $target ) ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 			if ( $result->ok() ) {
 				WP_CLI::log( "#{$item->package->id} {$result->title}: {$text}" );
 			} else {

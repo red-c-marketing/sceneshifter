@@ -201,7 +201,7 @@ final class PullCommand {
 		foreach ( $queue as $item ) {
 			$expected = is_int( $item->target['id'] ?? null ) ? $item->target['id'] : null;
 			$result   = $runner->run( $source->id, $item->package->id, $transfer, $options, $expected, $user );
-			$text     = wp_strip_all_tags( str_replace( array( '<br>', '</li><li>', '<ul class="sceneshifter-push-warnings"><li>' ), array( ' ', ' / ', ' — ' ), PullPage::resultHtml( $result, $source ) ) );
+			$text     = html_entity_decode( wp_strip_all_tags( str_replace( array( '<br>', '</li><li>', '<ul class="sceneshifter-push-warnings"><li>' ), array( ' ', ' / ', ' — ' ), PullPage::resultHtml( $result, $source ) ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 			if ( $result->ok() ) {
 				WP_CLI::log( "#{$item->package->id} {$result->title}: {$text}" );
 			} else {

@@ -255,6 +255,32 @@ final class PushTest extends TestCase {
 		$this->assertSame( array( 700 ), $staging->mediaFiles->deleted );
 	}
 
+	public function test_a_copy_deleted_there_is_copied_again_and_relinked(): void {
+		[ $staging, $dev ] = $this->paired();
+		$staging->lookup->media( 701, '2024/05/a.jpg', 3 );
+		$staging->map->save( new MapEntry( self::UUID_B, MapEntry::POST, 701, 'dev', 5, 1 ) );
+		$staging->lookup->gone[] = 701;
+		unset( $staging->lookup->posts[701] );
+
+		$result = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() )->run( 'staging', 11, self::TRANSFER, array(), null );
+
+		$this->assertSame( 1, $result->mediaCopied, 'A link to a file deleted there since isn\'t trusted.' );
+		$this->assertSame( 700, $staging->writer->writes[0]['package']->fields['featured'] );
+		$this->assertSame( 700, $staging->map->byRemote( 'dev', MapEntry::POST, 5 )?->localId, 'The new copy replaces the old link.' );
+		$this->assertNull( $staging->map->get( 'dev', MapEntry::POST, 701 ) );
+	}
+
+	public function test_a_linked_post_deleted_there_arrives_as_new(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$staging->lookup->gone[] = 201;
+		unset( $staging->lookup->posts[201] );
+
+		$built = $this->previewer( $dev, array( 11 => self::about() ) )->build( 'staging', array( 11 ) );
+
+		$this->assertFalse( $built['items'][0]->isUpdate(), 'Nothing is written to a post that no longer exists.' );
+	}
+
 	public function test_media_sceneshifter_did_not_copy_is_never_recorded(): void {
 		[ $staging, $dev ] = $this->paired();
 		$staging->lookup->media( 701, '2024/05/a.jpg', 3 );

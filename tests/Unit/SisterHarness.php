@@ -124,8 +124,8 @@ final class SisterHarness {
 	 * @return array{status: int, headers: array<string, string>, body: string}
 	 */
 	public function serve( string $method, string $url, array $headers, string $body ): array {
-		$path  = (string) parse_url( $url, PHP_URL_PATH );
-		$route = substr( $path, (int) strpos( $path, '/wp-json' ) + strlen( '/wp-json' ) );
+		parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $query );
+		$route = is_string( $query['rest_route'] ?? null ) ? $query['rest_route'] : '';
 		$gate  = $this->sisters->gate();
 
 		if ( Handshake::ROUTE === $route ) {

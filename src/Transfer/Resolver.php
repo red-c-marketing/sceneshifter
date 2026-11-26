@@ -9,7 +9,8 @@
  *   Terms: same taxonomy and slug.
  *
  * A match by path or file is only taken when it is the only candidate and
- * isn't already linked to a different item on the source.
+ * isn't already linked to a different item on the source. A link to
+ * something deleted or binned here since is ignored.
  *
  * @package RedC\Sceneshifter
  */
@@ -98,7 +99,7 @@ final class Resolver {
 	 */
 	private function post( int $sourceId, ?string $uuid, string $type, string $path, ?string $slug, ?int &$blocked ): ?array {
 		$linked = $sourceId > 0 ? $this->map->byRemote( $this->source, MapEntry::POST, $sourceId ) : null;
-		if ( null !== $linked ) {
+		if ( null !== $linked && $this->lookup->exists( $linked->localId, false ) ) {
 			return array(
 				'id'  => $linked->localId,
 				'how' => self::LINKED,
@@ -141,7 +142,7 @@ final class Resolver {
 	 */
 	private function attachment( int $sourceId, ?string $uuid, string $file, ?int $size ): ?array {
 		$linked = $this->map->byRemote( $this->source, MapEntry::POST, $sourceId );
-		if ( null !== $linked ) {
+		if ( null !== $linked && $this->lookup->exists( $linked->localId, true ) ) {
 			return array(
 				'id'  => $linked->localId,
 				'how' => self::LINKED,

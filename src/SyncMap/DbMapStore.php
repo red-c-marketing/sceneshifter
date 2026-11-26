@@ -49,6 +49,20 @@ final class DbMapStore implements MapStore {
 	}
 
 	public function save( MapEntry $entry ): void {
+		// A link replaces any other for the same item there, for example one
+		// to a copy deleted here since; otherwise the remote_object key would
+		// keep the old local ID.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
+		$this->db->query(
+			$this->db->prepare(
+				"DELETE FROM {$this->table} WHERE site = %s AND sister = %s AND object_type = %s AND remote_id = %d AND local_id <> %d",
+				$this->selfId,
+				$entry->sister,
+				$entry->objectType,
+				$entry->remoteId,
+				$entry->localId
+			)
+		);
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
 		$this->db->query(
 			$this->db->prepare(

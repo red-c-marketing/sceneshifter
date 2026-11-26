@@ -82,12 +82,14 @@ final class PreviewView {
 						<td>
 							<?php
 							echo esc_html(
-								null !== $item->author
+								$item->isUpdate()
+									? __( 'Stays as it is: updates never change the author.', 'sceneshifter' )
+									: ( null !== $item->author
 									/* translators: %s: user's name. */
 									? sprintf( __( '%s (same email address)', 'sceneshifter' ), $item->author['name'] )
 									: ( $this->pull
 										? __( 'No user here has the same email address, so the default author in Settings → Push is used.', 'sceneshifter' )
-										: __( 'No user there has the same email address, so that site\'s default author is used.', 'sceneshifter' ) )
+										: __( 'No user there has the same email address, so that site\'s default author is used.', 'sceneshifter' ) ) )
 							);
 							?>
 						</td>
@@ -196,9 +198,9 @@ final class PreviewView {
 	}
 
 	private function statusText( PreviewItem $item ): string {
-		$status = (string) ( $item->target['status'] ?? '' );
+		$status = self::statusLabel( (string) ( $item->target['status'] ?? '' ) );
 		if ( $item->isUpdate() ) {
-			/* translators: %s: post status, for example "publish". */
+			/* translators: %s: post status, for example "Published". */
 			return $this->pull ? sprintf( __( 'Keeps its status here (%s), unless you choose otherwise below.', 'sceneshifter' ), $status ) : sprintf( __( 'Keeps its status there (%s), unless you choose otherwise below.', 'sceneshifter' ), $status );
 		}
 		return __( 'Arrives as a draft, unless you choose otherwise below.', 'sceneshifter' );
@@ -331,6 +333,15 @@ final class PreviewView {
 
 	private static function shown( Rewrite $rewrite ): bool {
 		return Rewrite::URL === $rewrite->kind;
+	}
+
+	/**
+	 * A status's name as this site shows it, such as Published for publish.
+	 * Statuses this site doesn't know are shown as they are.
+	 */
+	public static function statusLabel( string $status ): string {
+		$object = get_post_status_object( $status );
+		return null !== $object && is_string( $object->label ) ? $object->label : $status;
 	}
 
 	public static function typeLabel( string $type ): string {

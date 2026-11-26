@@ -218,7 +218,7 @@ final class PullPage {
 							<th scope="row" class="check-column"><input type="checkbox" name="ids[]" value="<?php echo esc_attr( (string) $row['id'] ); ?>" id="sceneshifter-pull-<?php echo esc_attr( (string) $row['id'] ); ?>"></th>
 							<td><label for="sceneshifter-pull-<?php echo esc_attr( (string) $row['id'] ); ?>"><strong><?php echo esc_html( '' === $row['title'] ? __( '(no title)', 'sceneshifter' ) : $row['title'] ); ?></strong></label></td>
 							<td><?php echo esc_html( PreviewView::typeLabel( $row['type'] ) ); ?></td>
-							<td><?php echo esc_html( $row['status'] ); ?></td>
+							<td><?php echo esc_html( PreviewView::statusLabel( $row['status'] ) ); ?></td>
 							<td><code><?php echo esc_html( $row['path'] ); ?></code></td>
 							<td>
 								<?php

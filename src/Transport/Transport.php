@@ -54,10 +54,12 @@ final class Transport {
 	}
 
 	/**
-	 * The full address of a REST route on a sister.
+	 * The full address of a REST route on a sister. Uses ?rest_route=,
+	 * which works whatever the permalink setting; /wp-json/ needs pretty
+	 * permalinks, and with Plain ones the request lands on the home page.
 	 */
 	public static function url( Site $site, string $route ): string {
-		return rtrim( $site->url, '/' ) . '/wp-json' . $route;
+		return rtrim( $site->url, '/' ) . '/?rest_route=' . $route;
 	}
 
 	/**

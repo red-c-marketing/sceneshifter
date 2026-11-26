@@ -55,7 +55,7 @@ final class PairingTest extends TestCase {
 		// Only the pasting site made a call, and it went to staging.
 		$this->assertCount( 1, $dev->sent );
 		$this->assertSame( array(), $staging->sent );
-		$this->assertSame( 'https://staging.client.co.uk/wp-json/sceneshifter/v1/pair', $dev->sent[0]['url'] );
+		$this->assertSame( 'https://staging.client.co.uk/?rest_route=/sceneshifter/v1/pair', $dev->sent[0]['url'] );
 
 		// What dev sent: its ID, its public key, its salt fingerprint and the token. Never the salts.
 		$payload = json_decode( $dev->sent[0]['body'], true );

@@ -16,6 +16,9 @@ use WP_Post;
 
 final class WpPostWriter implements PostWriter {
 
+	/** Set on a post an undo moved to the bin. */
+	public const BINNED_META = '_sceneshifter_binned';
+
 	/** Post columns a snapshot keeps and a restore puts back. */
 	private const COLUMNS = array(
 		'post_author',
@@ -231,6 +234,8 @@ final class WpPostWriter implements PostWriter {
 	public function discard( int $id, bool $trash ): void {
 		if ( $trash ) {
 			wp_trash_post( $id );
+			// So the media check doesn't count a post an undo binned as still using its files.
+			update_post_meta( $id, self::BINNED_META, time() );
 		} else {
 			wp_delete_post( $id, true );
 		}

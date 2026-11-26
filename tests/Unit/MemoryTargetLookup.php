@@ -20,6 +20,13 @@ final class MemoryTargetLookup implements TargetLookup {
 	/** @var array<string, array{id: int, name: string}> */
 	public array $users = array();
 
+	/** @var list<int> Posts deleted here since they were linked. */
+	public array $gone = array();
+
+	public function exists( int $id, bool $attachment ): bool {
+		return ! in_array( $id, $this->gone, true ) && ( ! $attachment || 'attachment' === ( $this->posts[ $id ]['type'] ?? 'attachment' ) );
+	}
+
 	public function post( int $id, string $type, string $path, ?string $uuid = null, string $slug = '' ): self {
 		$this->posts[ $id ] = array(
 			'type' => $type,
