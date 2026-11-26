@@ -19,6 +19,14 @@ final class WpMediaFiles implements MediaFiles {
 	private const MAX_SIZE = 536870912;
 	private const STALE    = DAY_IN_SECONDS;
 
+	/** Which push copied an attachment here: transfer/source post ID. */
+	public const COPIED_META = '_sceneshifter_copied';
+
+	/**
+	 * @param bool $rename Save a clashing file as name-1.jpg rather than refuse it (Settings → Push).
+	 */
+	public function __construct( private readonly bool $rename = false ) {}
+
 	public function maxSize(): int {
 		/**
 		 * The largest file another environment may copy here, in bytes.
@@ -78,12 +86,17 @@ final class WpMediaFiles implements MediaFiles {
 		$path     = $folder . '/' . $name;
 		$part     = $this->part( $key );
 
-		if ( file_exists( $path ) ) {
-			// The same file left behind without an attachment can be reused.
-			if ( filesize( $path ) !== filesize( $part ) || hash_file( 'sha256', $path ) !== hash_file( 'sha256', $part ) ) {
+		if ( file_exists( $path ) && ( filesize( $path ) !== filesize( $part ) || hash_file( 'sha256', $path ) !== hash_file( 'sha256', $part ) ) ) {
+			if ( ! $this->rename ) {
 				/* translators: %s: file path. */
 				return self::error( self::EXISTS, sprintf( __( 'A different file already exists at uploads/%s.', 'sceneshifter' ), $relative ) );
 			}
+			$name     = wp_unique_filename( $folder, $name );
+			$relative = ( '' === $dir ? '' : $dir . '/' ) . $name;
+			$path     = $folder . '/' . $name;
+		}
+		if ( file_exists( $path ) ) {
+			// The same file left behind without an attachment can be reused.
 			wp_delete_file( $part );
 		} elseif ( ! @rename( $part, $path ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
 			return self::error( self::FAILED, __( 'Could not move the file into uploads.', 'sceneshifter' ) );
@@ -124,6 +137,9 @@ final class WpMediaFiles implements MediaFiles {
 		if ( Uuid::isValid( $meta['uuid'] ?? null ) ) {
 			update_post_meta( $id, Uuid::META_KEY, $meta['uuid'] );
 		}
+		if ( is_string( $meta['copied'] ?? null ) && '' !== $meta['copied'] ) {
+			update_post_meta( $id, self::COPIED_META, $meta['copied'] );
+		}
 		return array(
 			'id'   => $id,
 			'file' => $this->fileOf( $id ),
@@ -136,6 +152,73 @@ final class WpMediaFiles implements MediaFiles {
 
 	public function fileOf( int $id ): string {
 		return (string) get_post_meta( $id, '_wp_attached_file', true );
+	}
+
+	public function copiedBy( string $copied ): array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.SlowDBQuery
+		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s", self::COPIED_META, $copied ) );
+		return array_values( array_filter( array_map( 'intval', $ids ), fn( int $id ): bool => $this->attachmentExists( $id ) ) );
+	}
+
+	public function inUse( int $id, int $ignorePost ): bool {
+		global $wpdb;
+		$file   = $this->fileOf( $id );
+		$num    = (string) $id;
+		$quoted = '%"' . $num . '"%';
+		$listed = '%i:' . $num . ';%';
+		// Matches nothing when the file is unknown.
+		$stem = '' === $file ? '' : '%' . $wpdb->esc_like( MediaPath::stem( $file ) ) . '%';
+		$skip = $wpdb->prepare( "p.ID NOT IN (%d, %d) AND NOT ( p.post_type = 'revision' AND p.post_parent = %d )", $ignorePost, $id, $ignorePost );
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $skip is prepared above.
+		$queries = array(
+			$wpdb->prepare( "SELECT 1 FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID = m.post_id WHERE {$skip} AND m.meta_key = '_thumbnail_id' AND m.meta_value = %s LIMIT 1", $num ),
+			$wpdb->prepare(
+				"SELECT 1 FROM {$wpdb->posts} p WHERE {$skip} AND ( p.post_content LIKE %s OR p.post_content LIKE %s OR p.post_content LIKE %s OR p.post_content LIKE %s OR ( %s <> '' AND p.post_content LIKE %s ) ) LIMIT 1",
+				'%wp-image-' . $num . '"%',
+				'%wp-image-' . $num . ' %',
+				'%"id":' . $num . ',%',
+				'%"id":' . $num . '}%',
+				$stem,
+				$stem
+			),
+			$wpdb->prepare(
+				"SELECT 1 FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID = m.post_id WHERE {$skip} AND m.meta_key NOT LIKE %s AND ( m.meta_value = %s OR m.meta_value LIKE %s OR m.meta_value LIKE %s OR ( %s <> '' AND m.meta_value LIKE %s ) ) LIMIT 1",
+				'\_%',
+				$num,
+				$quoted,
+				$listed,
+				$stem,
+				$stem
+			),
+			$wpdb->prepare( "SELECT 1 FROM {$wpdb->termmeta} WHERE meta_value = %s LIMIT 1", $num ),
+			$wpdb->prepare(
+				"SELECT 1 FROM {$wpdb->options} WHERE ( option_name LIKE %s AND ( option_value = %s OR option_value LIKE %s OR option_value LIKE %s ) ) OR ( %s <> '' AND ( option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s ) AND option_value LIKE %s ) LIMIT 1",
+				'options\_%',
+				$num,
+				$quoted,
+				$listed,
+				$stem,
+				'options\_%',
+				'widget\_%',
+				'theme\_mods\_%',
+				$stem
+			),
+		);
+		foreach ( $queries as $sql ) {
+			if ( null !== $wpdb->get_var( $sql ) ) {
+				return true;
+			}
+		}
+		// phpcs:enable
+		return false;
+	}
+
+	public function deleteAttachment( int $id ): void {
+		if ( $this->attachmentExists( $id ) ) {
+			wp_delete_attachment( $id, true );
+		}
 	}
 
 	private function part( string $key ): string {

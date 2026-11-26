@@ -17,6 +17,15 @@ final class MemoryMediaFiles implements MediaFiles {
 
 	public int $nextId = 700;
 
+	/** Save a clashing file as name-1.jpg instead of refusing it. */
+	public bool $rename = false;
+
+	/** @var list<int> Attachments something else uses. */
+	public array $used = array();
+
+	/** @var list<int> */
+	public array $deleted = array();
+
 	/** @var array<string, string> Upload key => bytes so far. */
 	public array $parts = array();
 
@@ -54,10 +63,19 @@ final class MemoryMediaFiles implements MediaFiles {
 			);
 		}
 		if ( isset( $this->files[ $file ] ) && $this->files[ $file ] !== ( $this->parts[ $key ] ?? '' ) ) {
-			return array(
-				'error'   => self::EXISTS,
-				'message' => "A different file already exists at uploads/{$file}.",
-			);
+			if ( ! $this->rename ) {
+				return array(
+					'error'   => self::EXISTS,
+					'message' => "A different file already exists at uploads/{$file}.",
+				);
+			}
+			$dot  = (int) strrpos( $file, '.' );
+			$base = substr( $file, 0, $dot );
+			$n    = 1;
+			while ( isset( $this->files[ $base . '-' . $n . substr( $file, $dot ) ] ) ) {
+				++$n;
+			}
+			$file = $base . '-' . $n . substr( $file, $dot );
 		}
 		$this->files[ $file ] = $this->parts[ $key ] ?? '';
 		unset( $this->parts[ $key ] );
@@ -78,5 +96,18 @@ final class MemoryMediaFiles implements MediaFiles {
 
 	public function fileOf( int $id ): string {
 		return $this->attachments[ $id ]['file'] ?? '';
+	}
+
+	public function copiedBy( string $copied ): array {
+		return array_keys( array_filter( $this->attachments, static fn( array $a ): bool => ( $a['meta']['copied'] ?? null ) === $copied ) );
+	}
+
+	public function inUse( int $id, int $ignorePost ): bool {
+		return in_array( $id, $this->used, true );
+	}
+
+	public function deleteAttachment( int $id ): void {
+		unset( $this->files[ $this->fileOf( $id ) ], $this->attachments[ $id ] );
+		$this->deleted[] = $id;
 	}
 }

@@ -19,6 +19,9 @@ final class LogEntry {
 	public const FAILED = 'failed';
 	public const UNDONE = 'undone';
 
+	/** Received, and waiting as a copy for someone to apply it (Settings → Push). */
+	public const HELD = 'held';
+
 	/**
 	 * @param int                  $id        Store ID; 0 until saved.
 	 * @param string               $transfer  Batch UUID, shared by both sites' entries.
@@ -28,7 +31,7 @@ final class LogEntry {
 	 * @param int                  $sourceId  The post on the pushing site.
 	 * @param int|null             $targetId  The post on the receiving site; null when it failed before arriving.
 	 * @param string               $title     Post title at the time.
-	 * @param string               $result    DONE, FAILED or UNDONE.
+	 * @param string               $result    DONE, FAILED, UNDONE or HELD.
 	 * @param bool                 $created   Whether the push created the post on the receiving site.
 	 * @param string|null          $message   Why it failed, or a note.
 	 * @param array<string, mixed> $details   Counts, warnings, snapshot ID and hash after writing.
@@ -52,6 +55,13 @@ final class LogEntry {
 
 	public function withId( int $id ): self {
 		return new self( $id, $this->transfer, $this->direction, $this->sister, $this->user, $this->sourceId, $this->targetId, $this->title, $this->result, $this->created, $this->message, $this->details, $this->at );
+	}
+
+	/**
+	 * @param array<string, mixed> $details
+	 */
+	public function withDetails( array $details ): self {
+		return new self( $this->id, $this->transfer, $this->direction, $this->sister, $this->user, $this->sourceId, $this->targetId, $this->title, $this->result, $this->created, $this->message, $details, $this->at );
 	}
 
 	public function withResult( string $result, ?string $message ): self {

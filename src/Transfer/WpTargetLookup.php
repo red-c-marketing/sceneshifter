@@ -61,6 +61,10 @@ final class WpTargetLookup implements TargetLookup {
 		return self::withSizes( $ids );
 	}
 
+	public function fileOf( int $id ): string {
+		return 'attachment' === get_post_type( $id ) ? (string) get_post_meta( $id, '_wp_attached_file', true ) : '';
+	}
+
 	public function termBySlug( string $taxonomy, string $slug ): ?int {
 		if ( '' === $taxonomy || '' === $slug || ! taxonomy_exists( $taxonomy ) ) {
 			return null;

@@ -37,8 +37,11 @@ interface MediaFiles {
 	 * Moves a finished upload into the uploads folder at the same relative
 	 * path it has on the source and creates its attachment.
 	 *
+	 * When a different file is already at that path, returns EXISTS, or
+	 * saves it under the next free name (photo-1.jpg) if this site is set to.
+	 *
 	 * @param string               $file Relative to the uploads folder, e.g. 2024/05/photo.jpg.
-	 * @param array<string, mixed> $meta title, alt, caption, description, uuid.
+	 * @param array<string, mixed> $meta title, alt, caption, description, uuid, and copied: the push that copied it.
 	 * @return array{id: int, file: string}|array{error: string, message: string}
 	 */
 	public function place( string $key, string $file, array $meta ): array;
@@ -47,4 +50,21 @@ interface MediaFiles {
 
 	/** The attachment's file, relative to the uploads folder. */
 	public function fileOf( int $id ): string;
+
+	/**
+	 * Attachments place() created for a push, by the copied value it was given.
+	 *
+	 * @return list<int>
+	 */
+	public function copiedBy( string $copied ): array;
+
+	/**
+	 * Whether anything other than one post (and its revisions) still uses
+	 * an attachment: as a featured image, in content, in custom fields, term
+	 * meta or ACF options. Errs towards yes.
+	 */
+	public function inUse( int $id, int $ignorePost ): bool;
+
+	/** Deletes an attachment and its files. */
+	public function deleteAttachment( int $id ): void;
 }

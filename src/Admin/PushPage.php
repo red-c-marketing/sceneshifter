@@ -109,7 +109,7 @@ final class PushPage {
 	 * @return array<string, string>
 	 */
 	public function rowAction( array $actions, WP_Post $post ): array {
-		if ( ! current_user_can( Plugin::CAP_TRANSFER ) || ! $this->plugin->options()->isEnabledPostType( $post->post_type ) ) {
+		if ( ! current_user_can( Plugin::CAP_TRANSFER ) || ! $this->plugin->options()->isEnabledPostType( $post->post_type ) || HeldNotices::isHeldCopy( $post->ID ) ) {
 			return $actions;
 		}
 		$targets = $this->targets();
@@ -236,8 +236,9 @@ final class PushPage {
 	 * @param list<PreviewItem> $items
 	 */
 	private function renderForm( array $items, Site $target ): void {
-		$queue   = array();
-		$skipped = 0;
+		$queue    = array();
+		$unlinked = array();
+		$skipped  = 0;
 		foreach ( $items as $item ) {
 			if ( $item->isBlocked() ) {
 				++$skipped;
@@ -247,7 +248,11 @@ final class PushPage {
 				'id'       => $item->package->id,
 				'title'    => '' === $item->package->title() ? __( '(no title)', 'sceneshifter' ) : $item->package->title(),
 				'expected' => is_int( $item->target['id'] ?? null ) ? (string) $item->target['id'] : 'new',
+				'confirm'  => $item->overwritesUnlinked(),
 			);
+			if ( $item->overwritesUnlinked() ) {
+				$unlinked[] = $item;
+			}
 		}
 		if ( array() === $queue ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Nothing here can be pushed until the problems above are fixed.', 'sceneshifter' ) . '</p></div>';
@@ -259,6 +264,9 @@ final class PushPage {
 			'failed'  => __( 'Failed', 'sceneshifter' ),
 			/* translators: 1: number pushed, 2: number failed. */
 			'done'    => __( 'Finished: %1$d pushed, %2$d failed.', 'sceneshifter' ),
+			/* translators: 1: number pushed, 2: number failed, 3: number left out. */
+			'doneOut' => __( 'Finished: %1$d pushed, %2$d failed, %3$d left out.', 'sceneshifter' ),
+			'leftOut' => __( 'Left out: you didn\'t agree to overwrite the post there.', 'sceneshifter' ),
 			'leave'   => __( 'A push is still running. Leaving now stops it after the current post.', 'sceneshifter' ),
 		);
 		?>
@@ -293,7 +301,7 @@ final class PushPage {
 						<p class="description">
 							<?php
 							/* translators: %s: environment name. */
-							echo esc_html( sprintf( __( 'Changes to a published post on %s show to visitors straight away. Its previous version is kept, so the push can be undone from Sceneshifter → Log.', 'sceneshifter' ), $target->label ) );
+							echo esc_html( sprintf( __( 'Changes to a published post on %s show to visitors straight away, unless that site is set to hold them for review. Its previous version is kept, so the push can be undone from Sceneshifter → Log.', 'sceneshifter' ), $target->label ) );
 							?>
 						</p>
 					</td>
@@ -303,6 +311,34 @@ final class PushPage {
 					<td><label><input type="checkbox" name="create_terms" value="1" checked> <?php echo esc_html( sprintf( /* translators: %s: environment name. */ __( 'Create them on %s', 'sceneshifter' ), $target->label ) ); ?></label></td>
 				</tr>
 			</table>
+			<?php if ( array() !== $unlinked ) : ?>
+				<h3><?php esc_html_e( 'Overwrite posts that were never linked?', 'sceneshifter' ); ?></h3>
+				<p class="description">
+					<?php
+					/* translators: %s: environment name. */
+					echo esc_html( sprintf( __( '%s already has posts at the same addresses as these, but they were never linked to the ones here. Pushing replaces their content and links them from now on. Anything you leave unticked is left out of the push.', 'sceneshifter' ), $target->label ) );
+					?>
+				</p>
+				<fieldset class="sceneshifter-push-overwrite">
+					<legend class="screen-reader-text"><?php esc_html_e( 'Posts to overwrite', 'sceneshifter' ); ?></legend>
+					<?php foreach ( $unlinked as $item ) : ?>
+						<label>
+							<input type="checkbox" name="overwrite[]" value="<?php echo esc_attr( (string) $item->package->id ); ?>">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: 1: post title there, 2: post ID there, 3: environment name. */
+									__( 'Overwrite "%1$s" (ID %2$d) on %3$s', 'sceneshifter' ),
+									(string) ( $item->target['title'] ?? '' ),
+									(int) ( $item->target['id'] ?? 0 ),
+									$target->label
+								)
+							);
+							?>
+						</label><br>
+					<?php endforeach; ?>
+				</fieldset>
+			<?php endif; ?>
 			<?php if ( $skipped > 0 ) : ?>
 				<p class="description"><?php echo esc_html( sprintf( /* translators: %d: number of posts. */ _n( '%d item with problems will be skipped.', '%d items with problems will be skipped.', $skipped, 'sceneshifter' ), $skipped ) ); ?></p>
 			<?php endif; ?>
@@ -332,6 +368,8 @@ final class PushPage {
 			'existing_status' => isset( $_POST['existing_status'] ) ? sanitize_key( wp_unslash( $_POST['existing_status'] ) ) : 'keep',
 			'create_terms'    => ! empty( $_POST['create_terms'] ),
 		);
+		$overwrite                     = isset( $_POST['overwrite'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['overwrite'] ) ) : array();
+		$options['overwrite_unlinked'] = in_array( $postId, $overwrite, true );
 		// phpcs:enable
 
 		if ( ! current_user_can( Plugin::CAP_TRANSFER ) || 0 === $postId || ! current_user_can( 'edit_post', $postId ) ) {
@@ -371,18 +409,21 @@ final class PushPage {
 		$status = get_post_status_object( $result->status );
 		$label  = null === $status ? $result->status : (string) $status->label;
 		$html   = esc_html(
-			$result->created
+			$result->isHeld()
+				/* translators: 1: environment name, 2: post ID there. */
+				? sprintf( __( 'Held for review on %1$s. The published post there (ID %2$d) hasn\'t changed; someone there needs to apply the update.', 'sceneshifter' ), $target->label, (int) $result->targetId )
+				: ( $result->created
 				/* translators: 1: environment name, 2: post ID there, 3: status. */
 				? sprintf( __( 'Created on %1$s (ID %2$d) as %3$s.', 'sceneshifter' ), $target->label, (int) $result->targetId, $label )
 				/* translators: 1: environment name, 2: post ID there, 3: status. */
-				: sprintf( __( 'Updated on %1$s (ID %2$d), now %3$s.', 'sceneshifter' ), $target->label, (int) $result->targetId, $label )
+				: sprintf( __( 'Updated on %1$s (ID %2$d), now %3$s.', 'sceneshifter' ), $target->label, (int) $result->targetId, $label ) )
 		);
 		$links = array();
 		if ( '' !== ( $result->urls['edit'] ?? '' ) ) {
-			$links[] = '<a href="' . esc_url( $result->urls['edit'] ) . '" target="_blank" rel="noopener">' . esc_html__( 'Edit there', 'sceneshifter' ) . '</a>';
+			$links[] = '<a href="' . esc_url( $result->urls['edit'] ) . '" target="_blank" rel="noopener">' . ( $result->isHeld() ? esc_html__( 'Review it there', 'sceneshifter' ) : esc_html__( 'Edit there', 'sceneshifter' ) ) . '</a>';
 		}
 		if ( '' !== ( $result->urls['view'] ?? '' ) ) {
-			$links[] = '<a href="' . esc_url( $result->urls['view'] ) . '" target="_blank" rel="noopener">' . esc_html__( 'View there', 'sceneshifter' ) . '</a>';
+			$links[] = '<a href="' . esc_url( $result->urls['view'] ) . '" target="_blank" rel="noopener">' . ( $result->isHeld() ? esc_html__( 'Preview it there', 'sceneshifter' ) : esc_html__( 'View there', 'sceneshifter' ) ) . '</a>';
 		}
 		if ( array() !== $links ) {
 			$html .= ' ' . implode( ' · ', $links );
@@ -412,7 +453,7 @@ final class PushPage {
 		}
 		foreach ( $result->renamed as $file ) {
 			/* translators: 1: file name here, 2: file name there. */
-			$warnings[] = sprintf( __( '%1$s was saved there as %2$s, so links to it may not work.', 'sceneshifter' ), $file['from'], $file['to'] );
+			$warnings[] = sprintf( __( '%1$s was saved there as %2$s. Links to it in this post use the new name.', 'sceneshifter' ), $file['from'], $file['to'] );
 		}
 		if ( $result->linksTotal > 0 ) {
 			/* translators: 1: environment name, 2: number of links. */
@@ -625,6 +666,14 @@ final class PushPage {
 		if ( PreviewItem::EDITED === $item->conflict ) {
 			/* translators: %s: environment name. */
 			$warnings[] = sprintf( __( 'This post was edited on %s after the last push. Pushing would replace those edits.', 'sceneshifter' ), $target->label );
+		} elseif ( $item->overwritesUnlinked() ) {
+			$warnings[] = sprintf(
+				/* translators: 1: environment name, 2: post title there, 3: post ID there. */
+				__( '%1$s already has "%2$s" (ID %3$d) at the same address, but it was never linked to this post. Pushing would overwrite it and link the two. Agree to this below, or it is left out.', 'sceneshifter' ),
+				$target->label,
+				(string) ( $item->target['title'] ?? '' ),
+				(int) ( $item->target['id'] ?? 0 )
+			);
 		} elseif ( PreviewItem::NEVER_SYNCED === $item->conflict && array() !== (array) $item->changed ) {
 			/* translators: %s: environment name. */
 			$warnings[] = sprintf( __( 'This post has never been pushed to %s, so any differences there would be replaced.', 'sceneshifter' ), $target->label );

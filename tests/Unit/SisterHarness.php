@@ -17,6 +17,8 @@ use RedC\Sceneshifter\SyncMap\MemoryMapStore;
 use RedC\Sceneshifter\SyncMap\Responder;
 use RedC\Sceneshifter\Log\MemoryLogStore;
 use RedC\Sceneshifter\Transfer\ImportResponder;
+use RedC\Sceneshifter\Transfer\CopiedMedia;
+use RedC\Sceneshifter\Transfer\HeldUpdates;
 use RedC\Sceneshifter\Transfer\Rollback;
 use RedC\Sceneshifter\Transfer\MediaReceiver;
 use RedC\Sceneshifter\Transfer\MemorySnapshotStore;
@@ -44,6 +46,9 @@ final class SisterHarness {
 
 	/** @var array<int, list<\RedC\Sceneshifter\Scanner\Finding>> Links to other environments found in a written post. */
 	public array $findings = array();
+
+	/** Hold pushed updates to published posts for review (Settings → Push). */
+	public bool $holdUpdates = false;
 
 	/** @var list<string> Routes this site answered, in order. */
 	public array $served = array();
@@ -170,11 +175,15 @@ final class SisterHarness {
 	}
 
 	public function importer(): ImportResponder {
-		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000 );
+		return new ImportResponder( '1', $this->map, $this->lookup, $this->facts, $this->writer, $this->snapshots, $this->log, fn( int $id ): array => $this->findings[ $id ] ?? array(), static fn(): int => 1700000000, $this->holdUpdates );
 	}
 
 	public function rollback(): Rollback {
-		return new Rollback( $this->map, $this->snapshots, $this->writer, $this->facts, $this->log );
+		return new Rollback( $this->map, $this->snapshots, $this->writer, $this->facts, $this->log, new CopiedMedia( $this->mediaFiles, $this->map ) );
+	}
+
+	public function held(): HeldUpdates {
+		return new HeldUpdates( $this->map, $this->snapshots, $this->writer, $this->facts, $this->log, new CopiedMedia( $this->mediaFiles, $this->map ), static fn(): int => 1700000100 );
 	}
 
 	public function receiver(): MediaReceiver {

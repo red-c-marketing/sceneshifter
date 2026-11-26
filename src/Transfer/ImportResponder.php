@@ -42,6 +42,9 @@ final class ImportResponder {
 
 	private const LINK_LIMIT = 20;
 
+	/** Statuses visitors see (or will see), whose updates are held when this site holds updates. */
+	public const HELD_STATUSES = array( 'publish', 'future' );
+
 	/** @var callable(int): list<Finding> */
 	private $findings;
 
@@ -58,6 +61,7 @@ final class ImportResponder {
 	 * @param LogStore                     $log       This site's transfer log.
 	 * @param callable(int): list<Finding> $findings  Links to other environments in a post.
 	 * @param (callable(): int)|null       $clock     Current Unix time.
+	 * @param bool                         $hold      Hold updates to published posts for review (Settings → Push).
 	 */
 	public function __construct(
 		private readonly string $format,
@@ -68,7 +72,8 @@ final class ImportResponder {
 		private readonly SnapshotStore $snapshots,
 		private readonly LogStore $log,
 		callable $findings,
-		?callable $clock = null
+		?callable $clock = null,
+		private readonly bool $hold = false
 	) {
 		$this->findings = $findings;
 		$this->clock    = $clock ?? 'time';
@@ -113,6 +118,9 @@ final class ImportResponder {
 			$expect = $payload['expect_hash'] ?? null;
 			if ( is_string( $expect ) && ContentHash::overall( $before['parts'] ) !== $expect ) {
 				return array( 'error' => self::CHANGED );
+			}
+			if ( $this->hold && in_array( $before['status'], self::HELD_STATUSES, true ) ) {
+				return $this->holdUpdate( $sender, $transfer, $package, $localId, $payload, $metaKeys, $now );
 			}
 			$previous = $this->map->get( $sender, MapEntry::POST, $localId );
 			$snapshot = new Snapshot( 0, $transfer, $sender, $localId, false, $this->writer->snapshot( $localId ) + array( 'map' => null === $previous ? null : self::mapRow( $previous ) ), $now );
@@ -192,16 +200,103 @@ final class ImportResponder {
 			'status'      => $after['status'] ?? '',
 			'hash'        => $hash,
 			'mismatch'    => $mismatch,
-			'links'       => array_map(
-				static fn( Finding $f ): array => array(
-					'site'  => $f->sister->label,
-					'url'   => $f->url,
-					'where' => $f->locationText(),
-				),
-				array_slice( $findings, 0, self::LINK_LIMIT )
-			),
+			'links'       => self::linkRows( $findings ),
 			'links_total' => count( $findings ),
 			'urls'        => $this->writer->urls( $id ),
+		);
+	}
+
+	/**
+	 * Writes the update as a copy waiting for review and leaves the post,
+	 * and the sync map, as they are. A newer push for the same post replaces
+	 * the waiting copy.
+	 *
+	 * @param array<string, mixed> $payload
+	 * @param list<string>         $metaKeys
+	 * @return array<string, mixed>
+	 */
+	private function holdUpdate( string $sender, string $transfer, Package $package, int $postId, array $payload, array $metaKeys, int $now ): array {
+		$options = is_array( $payload['options'] ?? null ) ? $payload['options'] : array();
+		$user    = is_string( $payload['user'] ?? null ) ? substr( $payload['user'], 0, 250 ) : '';
+		$heldId  = $this->writer->heldFor( $postId );
+		$earlier = null === $heldId ? null : $this->writer->held( $heldId );
+		$record  = array(
+			'transfer' => $transfer,
+			'sister'   => $sender,
+			'user'     => $user,
+			'at'       => $now,
+			'package'  => $package->toArray(),
+			'options'  => array(
+				'existing_status' => (string) ( $options['existing_status'] ?? 'keep' ),
+				'create_terms'    => (bool) ( $options['create_terms'] ?? true ),
+			),
+		);
+		try {
+			$id = $this->writer->hold( $postId, $heldId, $package, $record );
+		} catch ( \Throwable $e ) {
+			$this->log->add( new LogEntry( 0, $transfer, LogEntry::IN, $sender, $user, $package->id, $postId, $package->title(), LogEntry::FAILED, false, $e->getMessage(), array( 'restored' => true ), $now ) );
+			return array(
+				'error'    => self::FAILED,
+				'message'  => $e->getMessage(),
+				'restored' => true,
+			);
+		}
+
+		if ( null !== $earlier && is_string( $earlier['record']['transfer'] ?? null ) && is_string( $earlier['record']['sister'] ?? null ) ) {
+			$replaced = $this->log->find( $earlier['record']['transfer'], LogEntry::IN, $earlier['record']['sister'], $postId );
+			if ( null !== $replaced && LogEntry::HELD === $replaced->result ) {
+				$this->log->setResult( $replaced->id, LogEntry::UNDONE, __( 'a later push', 'sceneshifter' ) );
+			}
+		}
+
+		$findings = ( $this->findings )( $id );
+		$this->log->add(
+			new LogEntry(
+				0,
+				$transfer,
+				LogEntry::IN,
+				$sender,
+				$user,
+				$package->id,
+				$postId,
+				$package->title(),
+				LogEntry::HELD,
+				false,
+				null,
+				array(
+					'held'        => $id,
+					'meta_keys'   => $metaKeys,
+					'links_total' => count( $findings ),
+				),
+				$now
+			)
+		);
+		return array(
+			'id'          => $postId,
+			'created'     => false,
+			'held'        => $id,
+			'snapshot'    => null,
+			'status'      => 'held',
+			'hash'        => null,
+			'mismatch'    => array(),
+			'links'       => self::linkRows( $findings ),
+			'links_total' => count( $findings ),
+			'urls'        => $this->writer->urls( $id ),
+		);
+	}
+
+	/**
+	 * @param list<Finding> $findings
+	 * @return list<array{site: string, url: string, where: string}>
+	 */
+	private static function linkRows( array $findings ): array {
+		return array_map(
+			static fn( Finding $f ): array => array(
+				'site'  => $f->sister->label,
+				'url'   => $f->url,
+				'where' => $f->locationText(),
+			),
+			array_slice( $findings, 0, self::LINK_LIMIT )
 		);
 	}
 

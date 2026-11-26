@@ -64,6 +64,26 @@ final class RewriteTest extends TestCase {
 		);
 	}
 
+	public function test_follows_images_saved_under_another_name(): void {
+		$rewriter = new UrlRewriter( $this->site( 'staging' ), $this->site( 'live' ), array( '2024/05/photo' => '2024/05/photo-1', '2023/01/logo' => '2025/02/logo' ) );
+		$html     = '<img src="https://staging.client.co.uk/wp-content/uploads/2024/05/photo-300x200.jpg" srcset="https://staging.client.co.uk/wp-content/uploads/2024/05/photo-scaled.jpg 2560w, https://staging.client.co.uk/wp-content/uploads/2024/05/photo.jpg?v=2 1024w">'
+			. '<a href="https://staging.client.co.uk/wp-content/uploads/2024/05/photo-2.jpg">other file</a>'
+			. '<a href="https://staging.client.co.uk/2024/05/photographs/">a page</a>';
+
+		$out = $rewriter->rewriteText( $html, 'Content' );
+
+		$this->assertStringContainsString( 'https://www.client.co.uk/wp-content/uploads/2024/05/photo-1-300x200.jpg"', $out );
+		$this->assertStringContainsString( 'https://www.client.co.uk/wp-content/uploads/2024/05/photo-1-scaled.jpg 2560w', $out );
+		$this->assertStringContainsString( 'https://www.client.co.uk/wp-content/uploads/2024/05/photo-1.jpg?v=2 1024w', $out );
+		$this->assertStringContainsString( 'https://www.client.co.uk/wp-content/uploads/2024/05/photo-2.jpg"', $out, 'A different file whose name starts the same is left alone.' );
+		$this->assertStringContainsString( 'https://www.client.co.uk/2024/05/photographs/"', $out );
+		$this->assertSame(
+			'{"url":"https:\\/\\/www.client.co.uk\\/wp-content\\/uploads\\/2025\\/02\\/logo-150x150.png"}',
+			$rewriter->rewriteText( '{"url":"https:\\/\\/staging.client.co.uk\\/wp-content\\/uploads\\/2023\\/01\\/logo-150x150.png"}', 'Meta' ),
+			'Escaped JSON keeps its escaping, and a different folder is followed too.'
+		);
+	}
+
 	public function test_rewrites_nested_values_without_touching_keys(): void {
 		$value = array(
 			'https://staging.client.co.uk/key' => array(

@@ -27,6 +27,7 @@ final class PushResult {
 	 * @param list<array{from: string, to: string}>                                       $renamed     Media saved under a different file name there.
 	 * @param list<array{id: int, kind: string, title: string, location: string, gone: bool}> $missing References left unresolved.
 	 * @param int|null                                                                    $snapshot    Snapshot ID there, for undoing it.
+	 * @param int|null                                                                    $heldId      The copy waiting for review there, when that site holds updates.
 	 */
 	public function __construct(
 		public readonly int $postId,
@@ -43,11 +44,16 @@ final class PushResult {
 		public readonly int $linksTotal = 0,
 		public readonly array $renamed = array(),
 		public readonly array $missing = array(),
-		public readonly ?int $snapshot = null
+		public readonly ?int $snapshot = null,
+		public readonly ?int $heldId = null
 	) {}
 
 	public function ok(): bool {
 		return null === $this->error;
+	}
+
+	public function isHeld(): bool {
+		return null !== $this->heldId;
 	}
 
 	public static function failed( int $postId, string $title, string $error, int $mediaCopied = 0 ): self {

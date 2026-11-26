@@ -97,7 +97,7 @@ final class LogPage {
 							<td><?php echo esc_html( $this->direction( $entry ) ); ?></td>
 							<td><?php echo wp_kses_post( $this->postCell( $entry ) ); ?></td>
 							<td><?php echo wp_kses_post( self::resultCell( $entry ) ); ?></td>
-							<td><?php $this->undoButton( $entry, false ); ?></td>
+							<td><?php $this->undoButton( $entry, false ); ?><?php $this->heldButtons( $entry ); ?></td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>
@@ -128,7 +128,18 @@ final class LogPage {
 			return;
 		}
 		if ( 'done' === $notice ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Undone.', 'sceneshifter' ) . '</p></div>';
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
+			$removed = isset( $_GET['removed'] ) ? absint( $_GET['removed'] ) : 0;
+			$text    = 0 === $removed
+				? __( 'Undone.', 'sceneshifter' )
+				/* translators: %d: number of files. */
+				: sprintf( _n( 'Undone. %d copied file that nothing else used was deleted.', 'Undone. %d copied files that nothing else used were deleted.', $removed, 'sceneshifter' ), $removed );
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $text ) . '</p></div>';
+			return;
+		}
+		if ( in_array( $notice, array( 'applied', 'discarded' ), true ) || str_starts_with( $notice, 'held_' ) ) {
+			$class = in_array( $notice, array( 'applied', 'discarded' ), true ) ? 'notice-success' : 'notice-error';
+			echo '<div class="notice ' . esc_attr( $class ) . ' is-dismissible"><p>' . esc_html( HeldNotices::outcomeText( $notice, $detail ) ) . '</p></div>';
 			return;
 		}
 		if ( Rollback::CHANGED_SINCE === $notice ) {
@@ -170,6 +181,22 @@ final class LogPage {
 		<?php
 	}
 
+	/**
+	 * Apply and Discard for an update waiting for review here.
+	 */
+	private function heldButtons( LogEntry $entry ): void {
+		$heldId = $entry->details['held'] ?? null;
+		if ( LogEntry::IN !== $entry->direction || LogEntry::HELD !== $entry->result || ! is_int( $heldId ) || ! current_user_can( Plugin::CAP_TRANSFER ) ) {
+			return;
+		}
+		$preview = get_preview_post_link( $heldId );
+		if ( is_string( $preview ) && '' !== $preview ) {
+			echo '<a class="button" href="' . esc_url( $preview ) . '">' . esc_html__( 'Preview', 'sceneshifter' ) . '</a> ';
+		}
+		echo '<a class="button button-primary" href="' . esc_url( HeldNotices::actionUrl( 'apply', $heldId, 'log' ) ) . '">' . esc_html__( 'Apply', 'sceneshifter' ) . '</a> ';
+		echo '<a class="button" href="' . esc_url( HeldNotices::actionUrl( 'discard', $heldId, 'log' ) ) . '">' . esc_html__( 'Discard', 'sceneshifter' ) . '</a>';
+	}
+
 	public function handleUndo(): void {
 		$id = isset( $_POST['entry'] ) ? absint( $_POST['entry'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- checked next.
 		check_admin_referer( self::ACTION . '_' . $id );
@@ -179,7 +206,8 @@ final class LogPage {
 		}
 		$force = ! empty( $_POST['force'] );
 		$user  = wp_get_current_user()->display_name;
-		$entry = $this->plugin->log()?->get( $id );
+		$entry   = $this->plugin->log()?->get( $id );
+		$removed = 0;
 		if ( null === $entry ) {
 			$result = array(
 				'code'    => Rollback::NOT_FOUND,
@@ -191,6 +219,7 @@ final class LogPage {
 				'code'    => Rollback::FAILED,
 				'message' => null,
 			) : $runner->undo( $entry, $force, $user );
+			$removed = $result['removed'] ?? 0;
 		} else {
 			$rollback = $this->plugin->rollback();
 			$reply    = null === $rollback || null === $entry->targetId ? array( 'error' => Rollback::NOT_FOUND ) : $rollback->undo( $entry->sister, $entry->transfer, $entry->targetId, $force, $user );
@@ -198,8 +227,12 @@ final class LogPage {
 				'code'    => empty( $reply['undone'] ) ? (string) ( $reply['error'] ?? Rollback::FAILED ) : null,
 				'message' => is_string( $reply['message'] ?? null ) ? $reply['message'] : null,
 			);
+			$removed  = is_array( $reply['media_removed'] ?? null ) ? count( $reply['media_removed'] ) : 0;
 		}
-		$args = null === $result['code'] ? array( 'undo' => 'done' ) : array(
+		$args = null === $result['code'] ? array(
+			'undo'    => 'done',
+			'removed' => $removed,
+		) : array(
 			'undo'   => $result['code'],
 			'entry'  => $id,
 			'detail' => (string) $result['message'],
@@ -224,8 +257,10 @@ final class LogPage {
 	}
 
 	private static function resultCell( LogEntry $entry ): string {
-		$text = match ( $entry->result ) {
-			LogEntry::DONE   => $entry->created ? __( 'Created', 'sceneshifter' ) : __( 'Updated', 'sceneshifter' ),
+		$heldThere = LogEntry::OUT === $entry->direction && 'held' === ( $entry->details['status'] ?? null );
+		$text      = match ( $entry->result ) {
+			LogEntry::DONE   => $heldThere ? __( 'Held for review there', 'sceneshifter' ) : ( $entry->created ? __( 'Created', 'sceneshifter' ) : __( 'Updated', 'sceneshifter' ) ),
+			LogEntry::HELD   => __( 'Waiting for review', 'sceneshifter' ),
 			/* translators: %s: person's name. */
 			LogEntry::UNDONE => null === $entry->message ? __( 'Undone', 'sceneshifter' ) : sprintf( __( 'Undone by %s', 'sceneshifter' ), $entry->message ),
 			default          => __( 'Failed', 'sceneshifter' ),
@@ -235,6 +270,10 @@ final class LogPage {
 			$html .= '<br><span class="description">' . esc_html( $entry->message ) . '</span>';
 		}
 		$facts = array();
+		if ( is_string( $entry->details['applied_by'] ?? null ) && '' !== $entry->details['applied_by'] ) {
+			/* translators: %s: person's name. */
+			$facts[] = sprintf( __( 'held for review, applied by %s', 'sceneshifter' ), $entry->details['applied_by'] );
+		}
 		$media = (int) ( $entry->details['media'] ?? 0 );
 		if ( $media > 0 ) {
 			/* translators: %d: number of files. */

@@ -192,8 +192,8 @@ final class TransferTest extends TestCase {
 		$this->assertSame( array( 'id' => 204, 'how' => Resolver::SLUG ), $resolved['posts'][32] );
 		$this->assertNull( $resolved['posts'][33], 'Two posts share the slug.' );
 		$this->assertNull( $resolved['posts'][34] );
-		$this->assertSame( array( 'id' => 501, 'how' => Resolver::FILE ), $resolved['attachments'][5] );
-		$this->assertSame( array( 'id' => 502, 'how' => Resolver::NAME ), $resolved['attachments'][6] );
+		$this->assertSame( array( 'id' => 501, 'how' => Resolver::FILE, 'file' => '2024/05/a.jpg' ), $resolved['attachments'][5] );
+		$this->assertSame( array( 502, Resolver::NAME ), array( $resolved['attachments'][6]['id'] ?? null, $resolved['attachments'][6]['how'] ?? null ) );
 		$this->assertNull( $resolved['attachments'][7], 'Same file, different size.' );
 		$this->assertSame( array( 9, null ), array_column( $resolved['terms'], 'id' ) );
 	}

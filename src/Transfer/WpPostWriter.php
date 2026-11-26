@@ -33,6 +33,17 @@ final class WpPostWriter implements PostWriter {
 		'menu_order',
 	);
 
+	/** On a held copy: the post it updates. */
+	public const HELD_FOR = '_sceneshifter_held_for';
+
+	/** On a held copy: what applying it needs, as JSON. */
+	public const HELD_RECORD = '_sceneshifter_held';
+
+	/**
+	 * @param int $defaultAuthor From Settings → Push; 0 for the first administrator.
+	 */
+	public function __construct( private readonly int $defaultAuthor = 0 ) {}
+
 	public function snapshot( int $id ): array {
 		$post = get_post( $id );
 		if ( ! $post instanceof WP_Post ) {
@@ -78,7 +89,7 @@ final class WpPostWriter implements PostWriter {
 		if ( null !== $options['author'] ) {
 			$post['post_author'] = $options['author'];
 		} elseif ( null === $id ) {
-			$post['post_author'] = self::defaultAuthor();
+			$post['post_author'] = $this->defaultAuthor();
 		}
 		if ( ! $options['keep_date'] && in_array( $options['status'], array( 'publish', 'future', 'private' ), true ) ) {
 			$post['post_date']     = (string) ( $f['post_date'] ?? '' );
@@ -234,6 +245,62 @@ final class WpPostWriter implements PostWriter {
 		);
 	}
 
+	public function heldFor( int $postId ): ?int {
+		$type = get_post_type( $postId );
+		if ( false === $type ) {
+			return null;
+		}
+		$ids = get_posts(
+			array(
+				'post_type'        => $type,
+				'post_status'      => array( 'pending', 'draft', 'private', 'publish', 'future' ),
+				'meta_key'         => self::HELD_FOR, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'meta_value'       => (string) $postId, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'fields'           => 'ids',
+				'numberposts'      => 1,
+				'orderby'          => 'ID',
+				'order'            => 'DESC',
+				'suppress_filters' => true,
+			)
+		);
+		return array() === $ids ? null : (int) $ids[0];
+	}
+
+	public function hold( int $postId, ?int $heldId, Package $package, array $record ): int {
+		$post = get_post( $postId );
+		if ( ! $post instanceof WP_Post ) {
+			throw new RuntimeException( 'The post this update is for no longer exists.' );
+		}
+		$copy = $package->with( array_merge( $package->fields, array( 'post_name' => '' ) ), $package->meta );
+		$id   = $this->write(
+			$heldId,
+			$copy,
+			array(
+				'status'       => 'pending',
+				'author'       => (int) $post->post_author,
+				'keep_date'    => true,
+				'create_terms' => ! empty( $record['options']['create_terms'] ),
+			)
+		);
+		delete_post_meta( $id, Uuid::META_KEY );
+		update_post_meta( $id, self::HELD_FOR, $postId );
+		update_post_meta( $id, self::HELD_RECORD, wp_slash( (string) wp_json_encode( $record ) ) );
+		return $id;
+	}
+
+	public function held( int $heldId ): ?array {
+		if ( ! get_post( $heldId ) instanceof WP_Post ) {
+			return null;
+		}
+		$postId = (int) get_post_meta( $heldId, self::HELD_FOR, true );
+		$raw    = get_post_meta( $heldId, self::HELD_RECORD, true );
+		$record = is_string( $raw ) ? json_decode( $raw, true, 512 ) : null;
+		return $postId > 0 && is_array( $record ) ? array(
+			'post'   => $postId,
+			'record' => $record,
+		) : null;
+	}
+
 	/**
 	 * Signed requests have no logged-in user, so WordPress would run the
 	 * post through KSES and strip embeds and scripts an administrator wrote.
@@ -259,9 +326,13 @@ final class WpPostWriter implements PostWriter {
 
 	/**
 	 * The author for a new post when no user here has the source author's
-	 * email address: the first administrator.
+	 * email address: the one chosen in Settings → Push if they can still
+	 * edit posts, otherwise the first administrator.
 	 */
-	private static function defaultAuthor(): int {
+	private function defaultAuthor(): int {
+		if ( $this->defaultAuthor > 0 && user_can( $this->defaultAuthor, 'edit_posts' ) ) {
+			return $this->defaultAuthor;
+		}
 		$admins = get_users(
 			array(
 				'role'    => 'administrator',

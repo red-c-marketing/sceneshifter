@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace RedC\Sceneshifter;
 
 use RedC\Sceneshifter\Admin\AdminBar;
+use RedC\Sceneshifter\Admin\HeldNotices;
 use RedC\Sceneshifter\Admin\LogPage;
 use RedC\Sceneshifter\Admin\Notices;
 use RedC\Sceneshifter\Admin\PushPage;
@@ -47,6 +48,8 @@ use RedC\Sceneshifter\SyncMap\Uuid;
 use RedC\Sceneshifter\SyncMap\WpContentIndex;
 use RedC\Sceneshifter\Log\DbLogStore;
 use RedC\Sceneshifter\Transfer\DbSnapshotStore;
+use RedC\Sceneshifter\Transfer\CopiedMedia;
+use RedC\Sceneshifter\Transfer\HeldUpdates;
 use RedC\Sceneshifter\Transfer\Rollback;
 use RedC\Sceneshifter\Transfer\ImportResponder;
 use RedC\Sceneshifter\Transfer\MediaReceiver;
@@ -153,6 +156,8 @@ final class Plugin {
 			\WP_CLI::add_command( 'sceneshifter push', array( $push, 'push' ) );
 			\WP_CLI::add_command( 'sceneshifter log', array( $push, 'log' ) );
 			\WP_CLI::add_command( 'sceneshifter rollback', array( $push, 'rollback' ) );
+			\WP_CLI::add_command( 'sceneshifter apply', array( $push, 'apply' ) );
+			\WP_CLI::add_command( 'sceneshifter discard', array( $push, 'discard' ) );
 		}
 
 		if ( is_admin() ) {
@@ -177,6 +182,7 @@ final class Plugin {
 			( new EditorAssets( $this ) )->register();
 			( new PushPage( $this ) )->register();
 			( new LogPage( $this ) )->register();
+			( new HeldNotices( $this ) )->register();
 		}
 	}
 
@@ -274,10 +280,12 @@ final class Plugin {
 			$syncMap->map(),
 			new WpTargetLookup(),
 			new WpSiteFacts( new Packager( $self ) ),
-			new WpPostWriter(),
+			$this->postWriter(),
 			DbSnapshotStore::forSite( $self->id ),
 			DbLogStore::forSite( $self->id ),
-			fn( int $id ): array => $this->findings( $id )
+			fn( int $id ): array => $this->findings( $id ),
+			null,
+			$this->options->pushSettings()->holdsUpdates()
 		);
 	}
 
@@ -290,7 +298,33 @@ final class Plugin {
 		if ( null === $syncMap || null === $self ) {
 			return null;
 		}
-		return new Rollback( $syncMap->map(), DbSnapshotStore::forSite( $self->id ), new WpPostWriter(), new WpSiteFacts( new Packager( $self ) ), DbLogStore::forSite( $self->id ) );
+		return new Rollback( $syncMap->map(), DbSnapshotStore::forSite( $self->id ), $this->postWriter(), new WpSiteFacts( new Packager( $self ) ), DbLogStore::forSite( $self->id ), new CopiedMedia( $this->mediaFiles(), $syncMap->map() ) );
+	}
+
+	/**
+	 * Applies or discards pushed updates held for review here. Null when inactive.
+	 */
+	public function heldUpdates(): ?HeldUpdates {
+		$syncMap = $this->syncMap();
+		$self    = $this->sisters()->self();
+		if ( null === $syncMap || null === $self ) {
+			return null;
+		}
+		return new HeldUpdates( $syncMap->map(), DbSnapshotStore::forSite( $self->id ), $this->postWriter(), new WpSiteFacts( new Packager( $self ) ), DbLogStore::forSite( $self->id ), new CopiedMedia( $this->mediaFiles(), $syncMap->map() ) );
+	}
+
+	/**
+	 * Writes pushed posts, with this site's default author.
+	 */
+	public function postWriter(): WpPostWriter {
+		return new WpPostWriter( $this->options->pushSettings()->defaultAuthor );
+	}
+
+	/**
+	 * Files for media pushed here, renaming clashes if this site is set to.
+	 */
+	public function mediaFiles(): WpMediaFiles {
+		return new WpMediaFiles( $this->options->pushSettings()->renamesClashes() );
 	}
 
 	/**
@@ -306,7 +340,7 @@ final class Plugin {
 	 */
 	public function mediaReceiver(): ?MediaReceiver {
 		$syncMap = $this->syncMap();
-		return null === $syncMap ? null : new MediaReceiver( $syncMap->map(), new WpMediaFiles() );
+		return null === $syncMap ? null : new MediaReceiver( $syncMap->map(), $this->mediaFiles() );
 	}
 
 	/**

@@ -79,7 +79,7 @@ final class MediaReceiver {
 	}
 
 	/**
-	 * @param array<string, mixed> $payload {upload, source, file, size, sha256, uuid, title, alt, caption, description}.
+	 * @param array<string, mixed> $payload {upload, source, file, size, sha256, uuid, title, alt, caption, description, transfer, post}.
 	 * @return array<string, mixed> {id, file, reused} or {error, message?}.
 	 */
 	public function commit( string $sender, array $payload ): array {
@@ -117,6 +117,7 @@ final class MediaReceiver {
 				'alt'         => self::str( $payload['alt'] ?? null ),
 				'caption'     => self::str( $payload['caption'] ?? null ),
 				'description' => self::str( $payload['description'] ?? null ),
+				'copied'      => self::copied( $payload['transfer'] ?? null, $payload['post'] ?? null ) ?? '',
 			)
 		);
 		if ( isset( $placed['error'] ) ) {
@@ -127,6 +128,14 @@ final class MediaReceiver {
 		$now = ( $this->clock )();
 		$this->map->save( new MapEntry( $uuid, MapEntry::POST, $placed['id'], $sender, $source, $now, null, $now ) );
 		return $placed + array( 'reused' => false );
+	}
+
+	/**
+	 * How an attachment remembers the push that copied it, so undoing that
+	 * push can delete it again: transfer/source post ID.
+	 */
+	public static function copied( mixed $transfer, mixed $post ): ?string {
+		return Uuid::isValid( $transfer ) && is_int( $post ) && $post > 0 ? strtolower( $transfer ) . '/' . $post : null;
 	}
 
 	/**

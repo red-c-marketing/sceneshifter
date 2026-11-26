@@ -12,6 +12,7 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 delete_option( 'sceneshifter_registry' );
 delete_option( 'sceneshifter_post_types' );
 delete_option( 'sceneshifter_check' );
+delete_option( 'sceneshifter_push' );
 delete_option( 'sceneshifter_scan_state' );
 delete_option( 'sceneshifter_report_scan' );
 delete_option( 'sceneshifter_scan_lock' );

@@ -12,11 +12,27 @@ use RedC\Sceneshifter\Scanner\ScanInput;
 use RedC\Sceneshifter\Scanner\SeverityPolicy;
 use RedC\Sceneshifter\SiteScan\ScheduledScan;
 use RedC\Sceneshifter\Store\CheckSettings;
+use RedC\Sceneshifter\Store\PushSettings;
 use RedC\Sceneshifter\Url\UrlClassifier;
 
 final class CheckSettingsTest extends TestCase {
 
 	private const CONTENT = '<a href="https://staging.client.co.uk/a">a</a> <a href="http://client.test:8080/b">b</a>';
+
+	public function test_push_settings_default_to_live_updates_and_stopping_on_clashes(): void {
+		$defaults = PushSettings::fromArray( array() );
+		$this->assertFalse( $defaults->holdsUpdates() );
+		$this->assertFalse( $defaults->renamesClashes() );
+		$this->assertSame( 0, $defaults->defaultAuthor );
+
+		$set = PushSettings::fromArray( ( new PushSettings( PushSettings::UPDATES_REVIEW, 7, PushSettings::CLASH_RENAME ) )->toArray() );
+		$this->assertTrue( $set->holdsUpdates() );
+		$this->assertTrue( $set->renamesClashes() );
+		$this->assertSame( 7, $set->defaultAuthor );
+
+		$junk = PushSettings::fromArray( array( 'publishedUpdates' => 'later', 'defaultAuthor' => '-3', 'mediaClash' => 'overwrite' ) );
+		$this->assertSame( array( PushSettings::UPDATES_LIVE, 0, PushSettings::CLASH_STOP ), array( $junk->publishedUpdates, $junk->defaultAuthor, $junk->mediaClash ) );
+	}
 
 	public function test_defaults_match_the_original_rule(): void {
 		$settings = new CheckSettings();

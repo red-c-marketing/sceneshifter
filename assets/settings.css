@@ -451,6 +451,19 @@ code.sceneshifter-fingerprint {
 	color: #d63638;
 }
 
+.sceneshifter-push-progress li.is-skipped .sceneshifter-push-state {
+	color: #646970;
+}
+
+.sceneshifter-push-overwrite {
+	margin: 0 0 12px;
+}
+
+.sceneshifter-push-overwrite label {
+	display: inline-block;
+	margin: 4px 0;
+}
+
 .sceneshifter-push-warnings {
 	margin: 4px 0 0 18px;
 	list-style: disc;

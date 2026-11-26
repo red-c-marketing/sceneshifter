@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace RedC\Sceneshifter\Cli;
 
+use RedC\Sceneshifter\Admin\HeldNotices;
 use RedC\Sceneshifter\Admin\PushPage;
 use RedC\Sceneshifter\Log\LogEntry;
 use RedC\Sceneshifter\Plugin;
@@ -61,6 +62,9 @@ final class PushCommand {
 	 * [--skip-new-terms]
 	 * : Don't create categories and tags the other site lacks.
 	 *
+	 * [--overwrite-unlinked]
+	 * : Overwrite posts there that have the same address but were never linked to these. Without it they are left out.
+	 *
 	 * [--dry-run]
 	 * : Show the preview and stop.
 	 *
@@ -97,10 +101,21 @@ final class PushCommand {
 		}
 		Utils\format_items( 'table', array_map( static fn( PreviewItem $item ): array => self::row( $item ), $built['items'] ), array( 'post', 'title', 'there', 'would_change', 'media_to_copy', 'missing', 'problem' ) );
 
-		$queue = array_values( array_filter( $built['items'], static fn( PreviewItem $item ): bool => ! $item->isBlocked() ) );
+		$overwrite = ! empty( $assoc['overwrite-unlinked'] );
+		$queue     = array();
+		foreach ( $built['items'] as $item ) {
+			if ( $item->isBlocked() ) {
+				continue;
+			}
+			if ( $item->overwritesUnlinked() && ! $overwrite ) {
+				WP_CLI::warning( sprintf( '#%d %s: %s has a post at the same address (ID %d) that was never linked to it. Left out; add --overwrite-unlinked to overwrite it.', $item->package->id, $item->package->title(), $target->label, (int) ( $item->target['id'] ?? 0 ) ) );
+				continue;
+			}
+			$queue[] = $item;
+		}
 		if ( ! empty( $assoc['dry-run'] ) || array() === $queue ) {
 			if ( array() === $queue ) {
-				WP_CLI::warning( 'Nothing can be pushed until the problems are fixed.' );
+				WP_CLI::warning( 'Nothing is left to push.' );
 			}
 			return;
 		}
@@ -111,6 +126,7 @@ final class PushCommand {
 			'existing_status' => (string) ( $assoc['existing'] ?? 'keep' ),
 			'create_terms'    => empty( $assoc['skip-new-terms'] ),
 		);
+		$options['overwrite_unlinked'] = $overwrite;
 		$user     = wp_get_current_user()->exists() ? wp_get_current_user()->display_name : 'WP-CLI';
 		$transfer = Uuid::generate();
 		$failed   = 0;
@@ -166,7 +182,7 @@ final class PushCommand {
 					'who'       => $e->user,
 					'post'      => LogEntry::OUT === $e->direction ? $e->sourceId : $e->targetId,
 					'title'     => $e->title,
-					'result'    => $e->result . ( LogEntry::DONE === $e->result ? ( $e->created ? ' (created)' : ' (updated)' ) : '' ),
+					'result'    => $e->result . ( LogEntry::DONE === $e->result ? ( 'held' === ( $e->details['status'] ?? null ) ? ' (held for review there)' : ( $e->created ? ' (created)' : ' (updated)' ) ) : '' ),
 					'message'   => (string) $e->message,
 				),
 				$log->recent( max( 1, (int) ( $assoc['limit'] ?? 20 ) ) )
@@ -197,21 +213,74 @@ final class PushCommand {
 		$force = ! empty( $assoc['force'] );
 		$user  = wp_get_current_user()->exists() ? wp_get_current_user()->display_name : 'WP-CLI';
 		if ( LogEntry::OUT === $entry->direction ) {
-			$result = $this->plugin->pushRunner()?->undo( $entry, $force, $user );
-			$code   = null === $result ? Rollback::FAILED : $result['code'];
-			$detail = $result['message'] ?? null;
+			$result  = $this->plugin->pushRunner()?->undo( $entry, $force, $user );
+			$code    = null === $result ? Rollback::FAILED : $result['code'];
+			$detail  = $result['message'] ?? null;
+			$removed = $result['removed'] ?? 0;
 		} else {
-			$reply  = null === $entry->targetId ? array( 'error' => Rollback::NOT_FOUND ) : ( $this->plugin->rollback()?->undo( $entry->sister, $entry->transfer, $entry->targetId, $force, $user ) ?? array( 'error' => Rollback::FAILED ) );
-			$code   = empty( $reply['undone'] ) ? (string) ( $reply['error'] ?? Rollback::FAILED ) : null;
-			$detail = is_string( $reply['message'] ?? null ) ? $reply['message'] : null;
+			$reply   = null === $entry->targetId ? array( 'error' => Rollback::NOT_FOUND ) : ( $this->plugin->rollback()?->undo( $entry->sister, $entry->transfer, $entry->targetId, $force, $user ) ?? array( 'error' => Rollback::FAILED ) );
+			$code    = empty( $reply['undone'] ) ? (string) ( $reply['error'] ?? Rollback::FAILED ) : null;
+			$detail  = is_string( $reply['message'] ?? null ) ? $reply['message'] : null;
+			$removed = is_array( $reply['media_removed'] ?? null ) ? count( $reply['media_removed'] ) : 0;
 		}
 		match ( $code ) {
-			null                    => WP_CLI::success( 'Undone.' ),
+			null                    => WP_CLI::success( 0 === $removed ? 'Undone.' : sprintf( 'Undone. Deleted %d copied file(s) that nothing else used.', $removed ) ),
 			Rollback::CHANGED_SINCE => WP_CLI::error( 'The post was edited since the push. Run again with --force to undo anyway.' ),
 			Rollback::ALREADY       => WP_CLI::error( 'That push was already undone.' ),
 			Rollback::NOT_FOUND     => WP_CLI::error( 'There is nothing to undo for that entry.' ),
 			default                 => WP_CLI::error( 'Could not undo it' . ( null === $detail ? '.' : ": {$detail}" ) ),
 		};
+	}
+
+	/**
+	 * Puts a pushed update that is waiting for review live.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <post-id>
+	 * : The published post the update is for (or the waiting copy).
+	 *
+	 * @param list<string>          $args
+	 * @param array<string, string> $assoc
+	 */
+	public function apply( array $args, array $assoc ): void {
+		$this->held( $args, 'apply' );
+	}
+
+	/**
+	 * Throws away a pushed update that is waiting for review.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <post-id>
+	 * : The published post the update is for (or the waiting copy).
+	 *
+	 * @param list<string>          $args
+	 * @param array<string, string> $assoc
+	 */
+	public function discard( array $args, array $assoc ): void {
+		$this->held( $args, 'discard' );
+	}
+
+	/**
+	 * @param list<string> $args
+	 */
+	private function held( array $args, string $op ): void {
+		$held = $this->plugin->heldUpdates();
+		if ( null === $held ) {
+			WP_CLI::error( 'Sceneshifter is inactive on this site.' );
+		}
+		$id     = (int) ( $args[0] ?? 0 );
+		$heldId = null !== $held->find( $id ) ? $id : $held->heldFor( $id );
+		if ( null === $heldId ) {
+			WP_CLI::error( "No pushed update is waiting for post {$id}." );
+		}
+		$user   = wp_get_current_user()->exists() ? wp_get_current_user()->display_name : 'WP-CLI';
+		$result = 'apply' === $op ? $held->apply( $heldId, $user ) : $held->discard( $heldId, $user );
+		if ( isset( $result['error'] ) ) {
+			WP_CLI::error( HeldNotices::outcomeText( 'held_' . $result['error'], (string) ( $result['message'] ?? '' ) ) );
+		}
+		WP_CLI::success( HeldNotices::outcomeText( 'apply' === $op ? 'applied' : 'discarded', '' ) );
 	}
 
 	/**
@@ -228,7 +297,7 @@ final class PushCommand {
 		return array(
 			'post'          => $item->package->id,
 			'title'         => $item->package->title(),
-			'there'         => $item->isUpdate() ? 'update #' . (int) ( $item->target['id'] ?? 0 ) : 'new',
+			'there'         => $item->isUpdate() ? ( $item->overwritesUnlinked() ? 'overwrite unlinked #' : 'update #' ) . (int) ( $item->target['id'] ?? 0 ) : 'new',
 			'would_change'  => null === $item->changed ? 'everything' : ( array() === $item->changed ? 'nothing' : implode( ', ', array_map( array( PushPage::class, 'partLabel' ), $item->changed ) ) ),
 			'media_to_copy' => count( $item->media ),
 			'missing'       => count( $item->missing ),

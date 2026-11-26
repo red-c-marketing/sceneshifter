@@ -57,6 +57,14 @@ final class PreviewItem {
 	}
 
 	/**
+	 * The target has a post at the same address that was never linked to
+	 * this one. Pushing overwrites it, so the person has to agree first.
+	 */
+	public function overwritesUnlinked(): bool {
+		return Resolver::PATH === ( $this->target['how'] ?? null );
+	}
+
+	/**
 	 * Problems that stop the push: the post type is missing on the target,
 	 * or the content links to a third environment.
 	 */

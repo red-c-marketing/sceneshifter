@@ -70,6 +70,10 @@ final class MemoryTargetLookup implements TargetLookup {
 		return $this->mediaWhere( static fn( array $p ): bool => isset( $p['file'] ) && basename( $p['file'] ) === $name );
 	}
 
+	public function fileOf( int $id ): string {
+		return (string) ( $this->posts[ $id ]['file'] ?? '' );
+	}
+
 	public function termBySlug( string $taxonomy, string $slug ): ?int {
 		return $this->terms[ "{$taxonomy}:{$slug}" ] ?? null;
 	}

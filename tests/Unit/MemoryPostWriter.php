@@ -28,6 +28,9 @@ final class MemoryPostWriter implements PostWriter {
 	/** @var list<int> */
 	public array $discarded = array();
 
+	/** @var array<int, array{post: int, record: array<string, mixed>, package: Package}> Held copies by ID. */
+	public array $heldCopies = array();
+
 	public function __construct(
 		private readonly FakeSiteFacts $facts,
 		private readonly MemoryTargetLookup $lookup
@@ -72,8 +75,38 @@ final class MemoryPostWriter implements PostWriter {
 	}
 
 	public function discard( int $id, bool $trash ): void {
-		unset( $this->facts->packages[ $id ], $this->lookup->posts[ $id ] );
+		unset( $this->facts->packages[ $id ], $this->lookup->posts[ $id ], $this->heldCopies[ $id ] );
 		$this->discarded[] = $id;
+	}
+
+	public function heldFor( int $postId ): ?int {
+		foreach ( $this->heldCopies as $id => $copy ) {
+			if ( $copy['post'] === $postId ) {
+				return $id;
+			}
+		}
+		return null;
+	}
+
+	public function hold( int $postId, ?int $heldId, Package $package, array $record ): int {
+		if ( null !== $this->fail ) {
+			throw new \RuntimeException( $this->fail );
+		}
+		$id                      = $heldId ?? $this->nextId++;
+		$this->heldCopies[ $id ] = array(
+			'post'    => $postId,
+			'record'  => $record,
+			'package' => $package,
+		);
+		return $id;
+	}
+
+	public function held( int $heldId ): ?array {
+		$copy = $this->heldCopies[ $heldId ] ?? null;
+		return null === $copy ? null : array(
+			'post'   => $copy['post'],
+			'record' => $copy['record'],
+		);
 	}
 
 	public function urls( int $id ): array {

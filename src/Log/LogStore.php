@@ -33,4 +33,11 @@ interface LogStore {
 	public function total(): int;
 
 	public function setResult( int $id, string $result, ?string $message ): void;
+
+	/**
+	 * Replaces an entry's details, as when a held update is applied.
+	 *
+	 * @param array<string, mixed> $details
+	 */
+	public function setDetails( int $id, array $details ): void;
 }

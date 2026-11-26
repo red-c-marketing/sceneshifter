@@ -168,17 +168,19 @@ final class PushPreview {
 	 * @param array<string, mixed> $answer    One item of the preflight reply.
 	 * @param array<int, int>      $uploaded  Media copied to the target since the preflight: source ID => target ID.
 	 * @param bool                 $writing   For the real push: IDs with no match become 0.
+	 * @param array<int, string>   $files     Where the copied media was saved there: source ID => file under uploads.
 	 */
-	public function item( Package $package, array $answer, Site $target, array $uploaded = array(), bool $writing = false ): PreviewItem {
+	public function item( Package $package, array $answer, Site $target, array $uploaded = array(), bool $writing = false, array $files = array() ): PreviewItem {
 		$posts       = self::matches( $answer['posts'] ?? null );
 		$attachments = $uploaded + self::matches( $answer['attachments'] ?? null );
+		$moves       = MediaPath::moves( $files + self::files( $answer['attachments'] ?? null ), $package->attachments );
 		$terms       = self::matches( $answer['term_refs'] ?? null );
 		$targetPost  = is_array( $answer['target'] ?? null ) && is_int( $answer['target']['id'] ?? null ) ? $answer['target'] : null;
 		if ( null !== $targetPost ) {
 			$posts[ $package->id ] = $targetPost['id'];
 		}
 
-		$rewriter  = new PackageRewriter( new UrlRewriter( $this->self, $target ), $writing ? ( new IdMap( $attachments, $posts, $terms ) )->clearingMissing() : new IdMap( $attachments, $posts, $terms ), $this->parse, $this->serialize );
+		$rewriter  = new PackageRewriter( new UrlRewriter( $this->self, $target, $moves ), $writing ? ( new IdMap( $attachments, $posts, $terms ) )->clearingMissing() : new IdMap( $attachments, $posts, $terms ), $this->parse, $this->serialize );
 		$result    = $rewriter->rewrite( $package );
 		$rewritten = $result['package'];
 
@@ -247,6 +249,19 @@ final class PushPreview {
 			is_array( $answer['checks'] ?? null ) ? array_values( array_filter( $answer['checks'], 'is_array' ) ) : array(),
 			$foreign
 		);
+	}
+
+	/**
+	 * @return array<int, string> Source ID => the matching file there, for media found.
+	 */
+	private static function files( mixed $list ): array {
+		$out = array();
+		foreach ( is_array( $list ) ? $list : array() as $row ) {
+			if ( is_array( $row ) && is_int( $row['source'] ?? null ) && is_int( $row['id'] ?? null ) && is_string( $row['file'] ?? null ) ) {
+				$out[ $row['source'] ] = $row['file'];
+			}
+		}
+		return $out;
 	}
 
 	/**

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace RedC\Sceneshifter\SyncMap;
 
+use RedC\Sceneshifter\Transfer\WpPostWriter;
+
 final class WpContentIndex implements ContentIndex {
 
 	/** Statuses worth linking. Bin, auto-drafts and revisions are left out. */
@@ -49,6 +51,13 @@ final class WpContentIndex implements ContentIndex {
 				'ignore_sticky_posts'    => true,
 				'suppress_filters'       => true,
 				'update_post_term_cache' => false,
+				// Updates waiting for review are copies, not content of their own.
+				'meta_query'             => array( // phpcs:ignore WordPress.DB.SlowDBQuery
+					array(
+						'key'     => WpPostWriter::HELD_FOR,
+						'compare' => 'NOT EXISTS',
+					),
+				),
 			)
 		);
 		$posts = array_values( array_filter( $query->posts, static fn( $post ): bool => $post instanceof \WP_Post ) );
@@ -65,7 +74,7 @@ final class WpContentIndex implements ContentIndex {
 
 	public function get( int $id ): ?Item {
 		$post = get_post( $id );
-		if ( ! $post instanceof \WP_Post || ! in_array( $post->post_type, $this->types, true ) || ! in_array( $post->post_status, self::statuses( $post->post_type ), true ) ) {
+		if ( ! $post instanceof \WP_Post || ! in_array( $post->post_type, $this->types, true ) || ! in_array( $post->post_status, self::statuses( $post->post_type ), true ) || '' !== (string) get_post_meta( $id, WpPostWriter::HELD_FOR, true ) ) {
 			return null;
 		}
 		return $this->item( $post, $this->sharedUuids( array( $post ) ) );

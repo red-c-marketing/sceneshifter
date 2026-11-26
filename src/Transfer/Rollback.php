@@ -3,7 +3,8 @@
  * On the site that received a push: undoes it from the snapshot taken just
  * before. A post the push created goes to the bin; an existing post gets
  * its fields, custom fields and terms back, and the sync map its previous
- * link. Media the push copied stays, since other posts may use it by now.
+ * link. A push still held for review just loses its copy. Media the push
+ * copied is deleted unless something else uses it by now.
  *
  * Refuses, unless forced, when the post has been edited since the push, so
  * those edits aren't lost without a warning.
@@ -36,7 +37,8 @@ final class Rollback {
 		private readonly SnapshotStore $snapshots,
 		private readonly PostWriter $writer,
 		private readonly SiteFacts $facts,
-		private readonly LogStore $log
+		private readonly LogStore $log,
+		private readonly CopiedMedia $media
 	) {}
 
 	/**
@@ -45,12 +47,15 @@ final class Rollback {
 	 * @param int    $postId   The post here.
 	 * @param bool   $force    Undo even if the post was edited since.
 	 * @param string $user     Who asked, for the log.
-	 * @return array<string, mixed> {undone: true, trashed: bool} or {error, message?}.
+	 * @return array<string, mixed> {undone: true, trashed: bool, media_removed: list<int>} or {error, message?}.
 	 */
 	public function undo( string $sister, string $transfer, int $postId, bool $force, string $user ): array {
 		$entry = $this->log->find( $transfer, LogEntry::IN, $sister, $postId );
 		if ( null !== $entry && LogEntry::UNDONE === $entry->result ) {
 			return array( 'error' => self::ALREADY );
+		}
+		if ( null !== $entry && LogEntry::HELD === $entry->result ) {
+			return $this->dropHeld( $entry, $sister, $transfer, $postId, $user );
 		}
 		$snapshot = $this->snapshots->forTransfer( $transfer, $postId );
 		if ( null === $entry || LogEntry::DONE !== $entry->result || null === $snapshot || $snapshot->sister !== $sister ) {
@@ -88,8 +93,36 @@ final class Rollback {
 
 		$this->log->setResult( $entry->id, LogEntry::UNDONE, '' === $user ? null : $user );
 		return array(
-			'undone'  => true,
-			'trashed' => $snapshot->isNew,
+			'undone'        => true,
+			'trashed'       => $snapshot->isNew,
+			'media_removed' => $this->media->remove( $sister, $transfer, $entry->sourceId, $postId ),
+		);
+	}
+
+	/**
+	 * Undoes a push that is still waiting for review: deletes its copy, if
+	 * a later push hasn't replaced it, and the media only it used.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function dropHeld( LogEntry $entry, string $sister, string $transfer, int $postId, string $user ): array {
+		$heldId = is_int( $entry->details['held'] ?? null ) ? $entry->details['held'] : 0;
+		$held   = $heldId > 0 ? $this->writer->held( $heldId ) : null;
+		if ( null !== $held && $held['post'] === $postId && ( $held['record']['transfer'] ?? null ) === $transfer ) {
+			try {
+				$this->writer->discard( $heldId, false );
+			} catch ( \Throwable $e ) {
+				return array(
+					'error'   => self::FAILED,
+					'message' => $e->getMessage(),
+				);
+			}
+		}
+		$this->log->setResult( $entry->id, LogEntry::UNDONE, '' === $user ? null : $user );
+		return array(
+			'undone'        => true,
+			'trashed'       => false,
+			'media_removed' => $this->media->remove( $sister, $transfer, $entry->sourceId, $heldId ),
 		);
 	}
 }

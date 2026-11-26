@@ -9,6 +9,7 @@ use RedC\Sceneshifter\Log\LogEntry;
 use RedC\Sceneshifter\Scanner\Finding;
 use RedC\Sceneshifter\SyncMap\MapEntry;
 use RedC\Sceneshifter\Transfer\ContentHash;
+use RedC\Sceneshifter\Transfer\HeldUpdates;
 use RedC\Sceneshifter\Transfer\ImportResponder;
 use RedC\Sceneshifter\Transfer\MediaFiles;
 use RedC\Sceneshifter\Transfer\MediaReceiver;
@@ -51,6 +52,7 @@ final class PushTest extends TestCase {
 		$this->assertSame( 700, $written->fields['featured'] );
 		$this->assertSame( 0, $written->fields['post_parent'], 'A parent the target lacks is cleared.' );
 		$this->assertSame( 'abc', $staging->mediaFiles->files['2024/05/a.jpg'] );
+		$this->assertSame( self::TRANSFER . '/11', $staging->mediaFiles->attachments[700]['meta']['copied'], 'The copy remembers which push made it.' );
 		$this->assertEqualsCanonicalizing( array( 7, 12 ), array_column( $result->missing, 'id' ) );
 
 		$this->assertSame( 900, $staging->map->byRemote( 'dev', MapEntry::POST, 11 )?->localId );
@@ -178,7 +180,10 @@ final class PushTest extends TestCase {
 		$this->assertSame( array( 900 ), $staging->writer->discarded );
 		$this->assertNull( $staging->map->byRemote( 'dev', MapEntry::POST, 11 ) );
 		$this->assertNull( $dev->map->get( 'staging', MapEntry::POST, 11 ) );
-		$this->assertNotNull( $staging->map->byRemote( 'dev', MapEntry::POST, 5 ), 'Copied media stays linked.' );
+		$this->assertSame( array( 700 ), $staging->mediaFiles->deleted, 'Media the push copied, which nothing else uses, is deleted.' );
+		$this->assertSame( 1, $undo['removed'] ?? null );
+		$this->assertNull( $staging->map->byRemote( 'dev', MapEntry::POST, 5 ) );
+		$this->assertNull( $dev->map->get( 'staging', MapEntry::POST, 5 ), 'Both sites forget the deleted copy.' );
 		$this->assertSame( array( LogEntry::UNDONE, 'Bo' ), array( $dev->log->get( 1 )?->result, $dev->log->get( 1 )?->message ) );
 		$this->assertSame( LogEntry::UNDONE, $staging->log->get( 1 )?->result );
 		$this->assertSame( Rollback::ALREADY, $staging->rollback()->undo( 'dev', self::TRANSFER, 900, false, 'Bo' )['error'] ?? null );
@@ -215,6 +220,138 @@ final class PushTest extends TestCase {
 
 		$this->assertTrue( $runner->undo( $dev->log->get( 1 ), true, 'Bo' )['ok'] );
 		$this->assertSame( 'Old title', $staging->facts->packages[201]->title() );
+	}
+
+	public function test_undo_keeps_copied_media_something_else_uses(): void {
+		[ $staging, $dev ] = $this->paired();
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), null );
+		$staging->mediaFiles->used = array( 700 );
+
+		$this->assertSame( 0, $runner->undo( $dev->log->get( 1 ), false, 'Bo' )['removed'] ?? null );
+		$this->assertSame( array(), $staging->mediaFiles->deleted );
+		$this->assertNotNull( $staging->map->byRemote( 'dev', MapEntry::POST, 5 ) );
+		$this->assertNotNull( $dev->map->get( 'staging', MapEntry::POST, 5 ) );
+	}
+
+	public function test_a_clashing_file_is_renamed_when_the_target_allows_it(): void {
+		[ $staging, $dev ] = $this->paired();
+		$staging->mediaFiles->files['2024/05/a.jpg'] = 'a different picture';
+		$staging->mediaFiles->rename                 = true;
+		$about = self::about();
+		$about = $about->with( array( 'post_content' => '<img src="http://client.test:8080/app/uploads/2024/05/a-300x200.jpg" class="wp-image-5">' ) + $about->fields, $about->meta );
+
+		$result = $this->runner( $dev, array( 11 => $about ), self::mediaA() )->run( 'staging', 11, self::TRANSFER );
+
+		$this->assertNull( $result->error );
+		$this->assertSame( 'abc', $staging->mediaFiles->files['2024/05/a-1.jpg'] );
+		$this->assertSame( 'a different picture', $staging->mediaFiles->files['2024/05/a.jpg'], 'The file already there is left alone.' );
+		$this->assertSame( array( array( 'from' => '2024/05/a.jpg', 'to' => '2024/05/a-1.jpg' ) ), $result->renamed );
+		$this->assertSame( '<img src="https://staging.client.co.uk/app/uploads/2024/05/a-1-300x200.jpg" class="wp-image-700">', $staging->writer->writes[0]['package']->fields['post_content'] );
+	}
+
+	public function test_later_pushes_follow_a_file_renamed_earlier(): void {
+		[ $staging, $dev ] = $this->paired();
+		$staging->lookup->media( 701, '2024/05/a-1.jpg', 3 );
+		$staging->map->save( new MapEntry( self::UUID_B, MapEntry::POST, 701, 'dev', 5, 1 ) );
+		$about = self::about();
+		$about = $about->with( array( 'post_content' => '<img src="http://client.test:8080/app/uploads/2024/05/a.jpg" class="wp-image-5">' ) + $about->fields, $about->meta );
+
+		$result = $this->runner( $dev, array( 11 => $about ), self::mediaA() )->run( 'staging', 11, self::TRANSFER );
+
+		$this->assertSame( 0, $result->mediaCopied );
+		$this->assertSame( '<img src="https://staging.client.co.uk/app/uploads/2024/05/a-1.jpg" class="wp-image-701">', $staging->writer->writes[0]['package']->fields['post_content'] );
+	}
+
+	public function test_overwriting_a_post_that_was_never_linked_needs_agreement(): void {
+		[ $staging, $dev ] = $this->paired();
+		$staging->lookup->post( 201, 'page', 'about' );
+		$staging->facts->packages[201] = self::package( 201, array( 'post_title' => 'Their about page' ) );
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+
+		$refused = $runner->run( 'staging', 11, self::TRANSFER, array(), 201 );
+		$this->assertStringContainsString( 'never linked to this one', (string) $refused->error );
+		$this->assertSame( array(), $staging->writer->writes );
+		$this->assertNotContains( MediaReceiver::CHUNK_ROUTE, $staging->served, 'Nothing is copied either.' );
+
+		$agreed = $runner->run( 'staging', 11, self::TRANSFER, array( 'overwrite_unlinked' => true ), 201 );
+		$this->assertNull( $agreed->error );
+		$this->assertSame( 201, $agreed->targetId );
+		$this->assertSame( 'About us', $staging->facts->packages[201]->title() );
+		$this->assertSame( 201, $staging->map->byRemote( 'dev', MapEntry::POST, 11 )?->localId, 'The two are linked from now on.' );
+	}
+
+	public function test_a_site_that_holds_updates_keeps_the_published_post_until_applied(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$staging->holdUpdates = true;
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+
+		$result = $runner->run( 'staging', 11, self::TRANSFER, array( 'existing_status' => 'keep' ), 201, 'Ann' );
+
+		$this->assertNull( $result->error );
+		$this->assertTrue( $result->isHeld() );
+		$this->assertSame( 900, $result->heldId );
+		$this->assertSame( 201, $result->targetId );
+		$this->assertSame( 'Old title', $staging->facts->packages[201]->title(), 'The published post is unchanged.' );
+		$this->assertSame( 'About us', $staging->writer->heldCopies[900]['package']->title() );
+		$this->assertNull( $staging->map->get( 'dev', MapEntry::POST, 201 )?->syncedAt, 'The sync map waits too.' );
+		$this->assertSame( array( LogEntry::HELD, 900 ), array( $staging->log->get( 1 )?->result, $staging->log->get( 1 )?->details['held'] ?? null ) );
+		$this->assertSame( 'held', $dev->log->get( 1 )?->details['status'] ?? null );
+		$this->assertSame( 900, $staging->held()->heldFor( 201 ) );
+
+		$applied = $staging->held()->apply( 900, 'Cy' );
+
+		$this->assertSame( array( 'post' => 201 ), $applied );
+		$this->assertSame( 'About us', $staging->facts->packages[201]->title() );
+		$this->assertSame( 'publish', $staging->facts->statuses[201] );
+		$this->assertArrayNotHasKey( 900, $staging->writer->heldCopies );
+		$this->assertSame( 1700000100, $staging->map->get( 'dev', MapEntry::POST, 201 )?->syncedAt );
+		$entry = $staging->log->get( 1 );
+		$this->assertSame( array( LogEntry::DONE, 'Cy' ), array( $entry?->result, $entry?->details['applied_by'] ?? null ) );
+		$this->assertNotNull( $entry?->details['hash'] ?? null );
+
+		$this->assertTrue( $runner->undo( $dev->log->get( 1 ), false, 'Bo' )['ok'], 'An applied update can still be undone.' );
+		$this->assertSame( 'Old title', $staging->facts->packages[201]->title() );
+	}
+
+	public function test_undoing_or_discarding_a_held_update_removes_the_copy(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$staging->holdUpdates = true;
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$runner->run( 'staging', 11, self::TRANSFER, array(), 201 );
+
+		$this->assertTrue( $runner->undo( $dev->log->get( 1 ), false, 'Bo' )['ok'] );
+		$this->assertSame( array(), $staging->writer->heldCopies );
+		$this->assertSame( LogEntry::UNDONE, $staging->log->get( 1 )?->result );
+		$this->assertSame( 'Old title', $staging->facts->packages[201]->title() );
+
+		$second = '55555555-5555-4555-8555-555555555555';
+		$result = $runner->run( 'staging', 11, $second, array(), 201 );
+		$this->assertTrue( $result->isHeld() );
+		$this->assertSame( array( 'post' => 201 ), $staging->held()->discard( (int) $result->heldId, 'Cy' ) );
+		$this->assertSame( array(), $staging->writer->heldCopies );
+		$this->assertSame( array( LogEntry::UNDONE, 'Cy' ), array( $staging->log->get( 2 )?->result, $staging->log->get( 2 )?->message ) );
+		$this->assertSame( HeldUpdates::NOT_FOUND, $staging->held()->apply( (int) $result->heldId, 'Cy' )['error'] ?? null );
+	}
+
+	public function test_a_newer_push_replaces_the_waiting_copy_and_drafts_are_not_held(): void {
+		[ $staging, $dev ] = $this->paired();
+		$this->existingAbout( $staging, 'publish' );
+		$staging->holdUpdates = true;
+		$runner = $this->runner( $dev, array( 11 => self::about() ), self::mediaA() );
+		$first  = $runner->run( 'staging', 11, self::TRANSFER, array(), 201 );
+		$second = $runner->run( 'staging', 11, '55555555-5555-4555-8555-555555555555', array(), 201 );
+
+		$this->assertSame( $first->heldId, $second->heldId, 'The same copy is reused.' );
+		$this->assertCount( 1, $staging->writer->heldCopies );
+		$this->assertSame( array( LogEntry::UNDONE, LogEntry::HELD ), array( $staging->log->get( 1 )?->result, $staging->log->get( 2 )?->result ) );
+
+		$staging->facts->statuses[201] = 'draft';
+		$draft = $runner->run( 'staging', 11, '66666666-6666-4666-8666-666666666666', array(), 201 );
+		$this->assertFalse( $draft->isHeld(), 'Only posts visitors can see are held.' );
+		$this->assertSame( 'About us', $staging->facts->packages[201]->title() );
 	}
 
 	public function test_receiver_accepts_retries_and_refuses_bad_uploads(): void {

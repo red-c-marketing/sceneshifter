@@ -75,6 +75,20 @@ final class DbLogStore implements LogStore {
 		return (int) $this->db->get_var( $this->db->prepare( "SELECT COUNT(*) FROM {$this->table} WHERE site = %s", $this->selfId ) );
 	}
 
+	public function setDetails( int $id, array $details ): void {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$this->db->update(
+			$this->table,
+			array( 'details' => (string) wp_json_encode( $details ) ),
+			array(
+				'site' => $this->selfId,
+				'id'   => $id,
+			),
+			array( '%s' ),
+			array( '%s', '%d' )
+		);
+	}
+
 	public function setResult( int $id, string $result, ?string $message ): void {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$this->db->update(

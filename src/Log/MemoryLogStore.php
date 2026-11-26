@@ -46,4 +46,10 @@ final class MemoryLogStore implements LogStore {
 			$this->entries[ $id ] = $this->entries[ $id ]->withResult( $result, $message );
 		}
 	}
+
+	public function setDetails( int $id, array $details ): void {
+		if ( isset( $this->entries[ $id ] ) ) {
+			$this->entries[ $id ] = $this->entries[ $id ]->withDetails( $details );
+		}
+	}
 }

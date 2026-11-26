@@ -14,8 +14,8 @@
 		}
 	}
 
-	function fill( text, a, b ) {
-		return String( text || '' ).replace( '%1$d', String( a ) ).replace( '%2$d', String( b ) );
+	function fill( text, a, b, c ) {
+		return String( text || '' ).replace( '%1$d', String( a ) ).replace( '%2$d', String( b ) ).replace( '%3$d', String( c ) );
 	}
 
 	function init( form ) {
@@ -41,6 +41,7 @@
 			}
 			// Read the choices before disabling them: disabled fields aren't sent.
 			var fields = new FormData( form );
+			var agreed = fields.getAll( 'overwrite[]' ).map( String );
 			running = true;
 			button.disabled = true;
 			form.querySelectorAll( 'select, input[type="checkbox"]' ).forEach( function ( field ) {
@@ -63,15 +64,23 @@
 
 			var pushed = 0;
 			var failed = 0;
+			var leftOut = 0;
 
 			function next( index ) {
 				if ( index >= queue.length ) {
 					running = false;
-					summary.textContent = fill( text.done, pushed, failed );
+					summary.textContent = leftOut > 0 ? fill( text.doneOut, pushed, failed, leftOut ) : fill( text.done, pushed, failed, 0 );
 					return;
 				}
 				var item = queue[ index ];
 				var row = rows[ index ];
+				if ( item.confirm && agreed.indexOf( String( item.id ) ) === -1 ) {
+					leftOut++;
+					row.row.className = 'is-skipped';
+					row.state.textContent = text.leftOut || '';
+					next( index + 1 );
+					return;
+				}
 				row.row.className = 'is-running';
 				row.state.textContent = text.pushing || '';
 

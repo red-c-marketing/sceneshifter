@@ -40,7 +40,7 @@ final class Resolver {
 
 	/**
 	 * @param array<string, mixed> $manifest Package::manifest() as sent.
-	 * @return array{target: array{id: int, how: string}|null, blocked_by: int|null, posts: array<int, array{id: int, how: string}|null>, attachments: array<int, array{id: int, how: string}|null>, term_refs: array<int, int|null>, terms: list<array{taxonomy: string, slug: string, id: int|null}>, author: array{id: int, name: string}|null}
+	 * @return array{target: array{id: int, how: string}|null, blocked_by: int|null, posts: array<int, array{id: int, how: string}|null>, attachments: array<int, array{id: int, how: string, file: string}|null>, term_refs: array<int, int|null>, terms: list<array{taxonomy: string, slug: string, id: int|null}>, author: array{id: int, name: string}|null}
 	 */
 	public function resolve( array $manifest ): array {
 		$sourceId = is_int( $manifest['id'] ?? null ) ? $manifest['id'] : 0;
@@ -58,9 +58,10 @@ final class Resolver {
 
 		$media = array();
 		foreach ( Package::keyed( $manifest['attachments'] ?? null ) as $id => $ref ) {
-			$media[ $id ] = empty( $ref['missing'] )
+			$found        = empty( $ref['missing'] )
 				? $this->attachment( $id, self::uuid( $ref['uuid'] ?? null ), self::str( $ref['file'] ?? null ), is_int( $ref['size'] ?? null ) ? $ref['size'] : null )
 				: null;
+			$media[ $id ] = null === $found ? null : $found + array( 'file' => $this->lookup->fileOf( $found['id'] ) );
 		}
 
 		$termRefs = array();

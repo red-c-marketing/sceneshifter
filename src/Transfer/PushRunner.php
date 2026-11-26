@@ -77,7 +77,8 @@ final class PushRunner {
 	 * @param string               $targetId Registry ID of the sister.
 	 * @param int                  $postId   The post here.
 	 * @param string               $transfer UUID shared by every post in the batch.
-	 * @param array<string, mixed> $options  new_status, existing_status, create_terms.
+	 * @param array<string, mixed> $options  new_status, existing_status, create_terms, and overwrite_unlinked to agree to
+	 *                                       overwriting a post found there by address that was never linked to this one.
 	 * @param int|null|false       $expected The post the preview said it would update (null for new); false to skip the check.
 	 * @param string               $user     Who started it, for both sites' logs.
 	 */
@@ -103,6 +104,7 @@ final class PushRunner {
 					'links'    => $result->linksTotal,
 					'missing'  => count( $result->missing ),
 					'status'   => $result->status,
+					'held'     => $result->heldId,
 				),
 				( $this->clock )()
 			)
@@ -114,7 +116,7 @@ final class PushRunner {
 	 * Asks the receiving site to undo one post from a push logged here.
 	 *
 	 * @param bool $force Undo even if the post was edited there since.
-	 * @return array{ok: bool, code: string|null, message: string|null}
+	 * @return array{ok: bool, code: string|null, message: string|null, removed?: int} removed: copied files deleted there because nothing else used them.
 	 */
 	public function undo( LogEntry $entry, bool $force, string $user ): array {
 		$target = $this->registry->get( $entry->sister );
@@ -157,11 +159,19 @@ final class PushRunner {
 		if ( $entry->created ) {
 			$this->map->delete( $target->id, MapEntry::POST, $entry->sourceId );
 		}
+		$removed = array_values( array_filter( is_array( $reply->data['media_removed'] ?? null ) ? $reply->data['media_removed'] : array(), 'is_int' ) );
+		foreach ( $removed as $copy ) {
+			$link = $this->map->byRemote( $target->id, MapEntry::POST, $copy );
+			if ( null !== $link ) {
+				$this->map->delete( $target->id, MapEntry::POST, $link->localId );
+			}
+		}
 		$this->log->setResult( $entry->id, LogEntry::UNDONE, '' === $user ? null : $user );
 		return array(
 			'ok'      => true,
 			'code'    => null,
 			'message' => null,
+			'removed' => count( $removed ),
 		);
 	}
 
@@ -195,12 +205,17 @@ final class PushRunner {
 			/* translators: %s: environment name. */
 			return PushResult::failed( $postId, $title, sprintf( __( 'What this post matches on %s has changed since the preview. Preview it again.', 'sceneshifter' ), $target->label ) );
 		}
+		if ( $item->overwritesUnlinked() && empty( $options['overwrite_unlinked'] ) ) {
+			/* translators: 1: environment name, 2: post ID there. */
+			return PushResult::failed( $postId, $title, sprintf( __( '%1$s has a post at the same address (ID %2$d) that was never linked to this one. It was left alone; agree to overwrite it to push this post.', 'sceneshifter' ), $target->label, (int) $targetPost ) );
+		}
 
 		$uploaded = array();
 		$uuids    = array();
+		$files    = array();
 		$renamed  = array();
 		foreach ( $item->media as $file ) {
-			$copied = $this->upload( $transport, $target, $file['id'] );
+			$copied = $this->upload( $transport, $target, $file['id'], $transfer, $postId );
 			if ( isset( $copied['error'] ) ) {
 				return PushResult::failed(
 					$postId,
@@ -212,7 +227,8 @@ final class PushRunner {
 			}
 			$uploaded[ $file['id'] ] = $copied['id'];
 			$uuids[ $file['id'] ]    = $copied['uuid'];
-			if ( '' !== $file['file'] && $copied['file'] !== $file['file'] ) {
+			$files[ $file['id'] ]    = $copied['file'];
+			if ( '' !== $file['file'] && '' !== $copied['file'] && MediaPath::stem( $copied['file'] ) !== MediaPath::stem( $file['file'] ) ) {
 				$renamed[] = array(
 					'from' => $file['file'],
 					'to'   => $copied['file'],
@@ -220,7 +236,7 @@ final class PushRunner {
 			}
 		}
 
-		$final  = $this->preview->item( $package, $answer, $target, $uploaded, true );
+		$final  = $this->preview->item( $package, $answer, $target, $uploaded, true, $files );
 		$result = $transport->send(
 			$target->id,
 			'POST',
@@ -278,7 +294,8 @@ final class PushRunner {
 			is_int( $data['links_total'] ?? null ) ? $data['links_total'] : 0,
 			$renamed,
 			$final->missing,
-			is_int( $data['snapshot'] ?? null ) ? $data['snapshot'] : null
+			is_int( $data['snapshot'] ?? null ) ? $data['snapshot'] : null,
+			is_int( $data['held'] ?? null ) ? $data['held'] : null
 		);
 	}
 
@@ -287,7 +304,7 @@ final class PushRunner {
 	 *
 	 * @return array{id: int, file: string, uuid: string}|array{error: string}
 	 */
-	private function upload( Transport $transport, Site $target, int $attachmentId ): array {
+	private function upload( Transport $transport, Site $target, int $attachmentId, string $transfer, int $postId ): array {
 		$file = $this->media->describe( $attachmentId );
 		if ( null === $file ) {
 			return array( 'error' => __( 'the file is missing on this site.', 'sceneshifter' ) );
@@ -347,6 +364,8 @@ final class PushRunner {
 				'alt'         => $file['alt'],
 				'caption'     => $file['caption'],
 				'description' => $file['description'],
+				'transfer'    => $transfer,
+				'post'        => $postId,
 			)
 		);
 		$reply = $sent->ok() ? $sent->data : null;

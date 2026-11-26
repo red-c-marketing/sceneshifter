@@ -37,6 +37,7 @@ final class SettingsPage {
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		( new CheckSettingsTab( $this->plugin ) )->register();
+		( new PushSettingsTab( $this->plugin ) )->register();
 		( new PairingTab( $this->plugin ) )->register();
 		( new LinkTab( $this->plugin ) )->register();
 	}
@@ -85,7 +86,7 @@ final class SettingsPage {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- choosing a tab only.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
-		$tab = in_array( $tab, array( 'check', 'pairing', 'link' ), true ) ? $tab : 'sites';
+		$tab = in_array( $tab, array( 'check', 'push', 'pairing', 'link' ), true ) ? $tab : 'sites';
 		if ( 'link' === $tab && PairingTab::canManage() ) {
 			?>
 			<div class="wrap sceneshifter-settings">
@@ -102,6 +103,20 @@ final class SettingsPage {
 				<h1><?php esc_html_e( 'Sceneshifter settings', 'sceneshifter' ); ?></h1>
 				<?php self::tabs( $tab ); ?>
 				<?php ( new PairingTab( $this->plugin ) )->render(); ?>
+			</div>
+			<?php
+			return;
+		}
+		if ( 'push' === $tab ) {
+			?>
+			<div class="wrap sceneshifter-settings">
+				<h1><?php esc_html_e( 'Sceneshifter settings', 'sceneshifter' ); ?></h1>
+				<?php self::tabs( $tab ); ?>
+				<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- notice after redirect. ?>
+				<?php if ( isset( $_GET['updated'] ) ) : ?>
+					<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'sceneshifter' ); ?></p></div>
+				<?php endif; ?>
+				<?php ( new PushSettingsTab( $this->plugin ) )->render(); ?>
 			</div>
 			<?php
 			return;
@@ -290,6 +305,7 @@ final class SettingsPage {
 		$tabs = array(
 			'sites' => __( 'Sites', 'sceneshifter' ),
 			'check' => __( 'Check', 'sceneshifter' ),
+			'push'  => __( 'Push', 'sceneshifter' ),
 		);
 		if ( PairingTab::canManage() ) {
 			$tabs['pairing'] = __( 'Pairing', 'sceneshifter' );

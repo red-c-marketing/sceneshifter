@@ -21,9 +21,22 @@ final class UrlRewriter {
 
 	private string $pattern;
 	private string $targetBase;
+	private ?string $filePattern = null;
 
-	public function __construct( Site $source, Site $target ) {
+	/**
+	 * @param Site                  $source The site the URLs point at now.
+	 * @param Site                  $target The site they should point at.
+	 * @param array<string, string> $files  Media saved under another name on the target: source stem => target stem,
+	 *                                      as uploads-relative paths without extension (2024/05/photo => 2024/05/photo-1).
+	 *                                      Every size of the image follows.
+	 */
+	public function __construct( Site $source, Site $target, private readonly array $files = array() ) {
 		$this->targetBase = rtrim( $target->url, '/' );
+		if ( array() !== $files ) {
+			$stems = array_map( static fn( string $stem ): string => preg_quote( $stem, '~' ), array_keys( $files ) );
+			usort( $stems, static fn( string $a, string $b ): int => strlen( $b ) <=> strlen( $a ) );
+			$this->filePattern = '~/(?<stem>' . implode( '|', $stems ) . ')(?<tail>(?:-(?:scaled|rotated))?(?:-\d+x\d+)?\.[A-Za-z0-9]{2,5})(?=[?#]|$)~';
+		}
 
 		$alternatives = array();
 		foreach ( $source->bases() as $base ) {
@@ -53,9 +66,10 @@ final class UrlRewriter {
 			$this->pattern,
 			function ( array $m ) use ( $location, &$rewrites ): string {
 				$escaped = str_contains( $m[0], '\\/' );
-				$new     = $this->targetBase . $m['rest'];
+				$rest    = $this->moveFile( $m['rest'], $escaped );
+				$new     = $this->targetBase . $rest;
 				if ( $escaped ) {
-					$new = str_replace( '/', '\\/', $this->targetBase ) . $m['rest'];
+					$new = str_replace( '/', '\\/', $this->targetBase ) . $rest;
 				}
 				$rewrites[] = new Rewrite( Rewrite::URL, $location, $m[0], $new );
 				return $new;
@@ -83,6 +97,27 @@ final class UrlRewriter {
 			}
 		}
 		return $value;
+	}
+
+	/**
+	 * Points a URL's path at the renamed file when the target saved that
+	 * image under another name.
+	 */
+	private function moveFile( string $rest, bool $escaped ): string {
+		if ( null === $this->filePattern ) {
+			return $rest;
+		}
+		$plain = $escaped ? str_replace( '\\/', '/', $rest ) : $rest;
+		$moved = preg_replace_callback(
+			$this->filePattern,
+			fn( array $m ): string => '/' . $this->files[ $m['stem'] ] . $m['tail'],
+			$plain,
+			1
+		);
+		if ( null === $moved || $moved === $plain ) {
+			return $rest;
+		}
+		return $escaped ? str_replace( '/', '\\/', $moved ) : $moved;
 	}
 
 	/**

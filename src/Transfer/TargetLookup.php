@@ -46,6 +46,11 @@ interface TargetLookup {
 	 */
 	public function mediaByName( string $name ): array;
 
+	/**
+	 * An attachment's file, relative to the uploads folder; '' if unknown.
+	 */
+	public function fileOf( int $id ): string;
+
 	public function termBySlug( string $taxonomy, string $slug ): ?int;
 
 	/**
