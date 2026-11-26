@@ -479,3 +479,21 @@ code.sceneshifter-fingerprint {
 	vertical-align: top;
 	overflow-wrap: anywhere;
 }
+
+/* Log filters */
+.sceneshifter-log-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	margin: 12px 0 4px;
+}
+
+.sceneshifter-log-filters select,
+.sceneshifter-log-filters input {
+	max-width: 100%;
+}
+
+.sceneshifter-log-count {
+	margin-top: 0;
+}

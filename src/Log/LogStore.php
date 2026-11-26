@@ -28,9 +28,9 @@ interface LogStore {
 	 *
 	 * @return list<LogEntry>
 	 */
-	public function recent( int $limit, int $offset = 0 ): array;
+	public function recent( int $limit, int $offset = 0, ?LogFilter $filter = null ): array;
 
-	public function total(): int;
+	public function total( ?LogFilter $filter = null ): int;
 
 	public function setResult( int $id, string $result, ?string $message ): void;
 

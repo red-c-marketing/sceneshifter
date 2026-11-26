@@ -33,12 +33,20 @@ final class MemoryLogStore implements LogStore {
 		return null;
 	}
 
-	public function recent( int $limit, int $offset = 0 ): array {
-		return array_slice( array_values( array_reverse( $this->entries ) ), $offset, $limit );
+	public function recent( int $limit, int $offset = 0, ?LogFilter $filter = null ): array {
+		return array_slice( $this->matching( $filter ), $offset, $limit );
 	}
 
-	public function total(): int {
-		return count( $this->entries );
+	public function total( ?LogFilter $filter = null ): int {
+		return count( $this->matching( $filter ) );
+	}
+
+	/**
+	 * @return list<LogEntry> Newest first.
+	 */
+	private function matching( ?LogFilter $filter ): array {
+		$all = array_values( array_reverse( $this->entries ) );
+		return null === $filter ? $all : array_values( array_filter( $all, array( $filter, 'matches' ) ) );
 	}
 
 	public function setResult( int $id, string $result, ?string $message ): void {

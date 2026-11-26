@@ -64,15 +64,53 @@ final class DbLogStore implements LogStore {
 		return is_array( $row ) ? self::entry( $row ) : null;
 	}
 
-	public function recent( int $limit, int $offset = 0 ): array {
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
-		$rows = $this->db->get_results( $this->db->prepare( "SELECT * FROM {$this->table} WHERE site = %s ORDER BY id DESC LIMIT %d OFFSET %d", $this->selfId, $limit, $offset ), ARRAY_A );
+	public function recent( int $limit, int $offset = 0, ?LogFilter $filter = null ): array {
+		[ $where, $args ] = $this->where( $filter );
+		$args[]           = $limit;
+		$args[]           = $offset;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- table name and placeholders only.
+		$rows = $this->db->get_results( $this->db->prepare( "SELECT * FROM {$this->table} WHERE {$where} ORDER BY id DESC LIMIT %d OFFSET %d", $args ), ARRAY_A );
 		return array_map( array( self::class, 'entry' ), is_array( $rows ) ? $rows : array() );
 	}
 
-	public function total(): int {
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name only.
-		return (int) $this->db->get_var( $this->db->prepare( "SELECT COUNT(*) FROM {$this->table} WHERE site = %s", $this->selfId ) );
+	public function total( ?LogFilter $filter = null ): int {
+		[ $where, $args ] = $this->where( $filter );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- table name and placeholders only.
+		return (int) $this->db->get_var( $this->db->prepare( "SELECT COUNT(*) FROM {$this->table} WHERE {$where}", $args ) );
+	}
+
+	/**
+	 * The WHERE clause for a filter: placeholders only, values separate.
+	 *
+	 * @return array{0: string, 1: list<string|int>}
+	 */
+	private function where( ?LogFilter $filter ): array {
+		$sql  = array( 'site = %s' );
+		$args = array( $this->selfId );
+		if ( null === $filter ) {
+			return array( $sql[0], $args );
+		}
+		foreach ( array( 'direction' => $filter->direction, 'sister' => $filter->sister, 'result' => $filter->result, 'transfer' => $filter->transfer ) as $column => $value ) {
+			if ( '' !== $value ) {
+				$sql[]  = "{$column} = %s";
+				$args[] = $value;
+			}
+		}
+		if ( null !== $filter->from ) {
+			$sql[]  = 'at >= %d';
+			$args[] = $filter->from;
+		}
+		if ( null !== $filter->to ) {
+			$sql[]  = 'at < %d';
+			$args[] = $filter->to;
+		}
+		if ( '' !== $filter->search ) {
+			$like   = '%' . $this->db->esc_like( $filter->search ) . '%';
+			$sql[]  = '( title LIKE %s OR user_name LIKE %s )';
+			$args[] = $like;
+			$args[] = $like;
+		}
+		return array( implode( ' AND ', $sql ), $args );
 	}
 
 	public function setDetails( int $id, array $details ): void {

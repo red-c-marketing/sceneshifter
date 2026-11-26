@@ -13,6 +13,7 @@ namespace RedC\Sceneshifter\Cli;
 use RedC\Sceneshifter\Admin\HeldNotices;
 use RedC\Sceneshifter\Admin\PushPage;
 use RedC\Sceneshifter\Log\LogEntry;
+use RedC\Sceneshifter\Log\LogFilter;
 use RedC\Sceneshifter\Plugin;
 use RedC\Sceneshifter\SyncMap\Uuid;
 use RedC\Sceneshifter\Transfer\PreflightResponder;
@@ -148,7 +149,7 @@ final class PushCommand {
 	}
 
 	/**
-	 * Lists recent pushes from and to this site.
+	 * Lists recent pushes and pulls from and to this site.
 	 *
 	 * ## OPTIONS
 	 *
@@ -157,6 +158,27 @@ final class PushCommand {
 	 * ---
 	 * default: 20
 	 * ---
+	 *
+	 * [--direction=<direction>]
+	 * : in (to this site) or out (from this site).
+	 *
+	 * [--sister=<site>]
+	 * : Only transfers with this environment.
+	 *
+	 * [--result=<result>]
+	 * : done, failed, undone or held.
+	 *
+	 * [--search=<words>]
+	 * : Words in the post title or the person's name.
+	 *
+	 * [--from=<date>]
+	 * : From this day (Y-m-d, site time zone).
+	 *
+	 * [--to=<date>]
+	 * : Up to and including this day.
+	 *
+	 * [--batch=<uuid>]
+	 * : Only one batch.
 	 *
 	 * [--format=<format>]
 	 * : table, csv, json or yaml.
@@ -185,7 +207,22 @@ final class PushCommand {
 					'result'    => $e->result . ( ! empty( $e->details['pulled'] ) ? ' (pulled)' : '' ) . ( LogEntry::DONE === $e->result ? ( 'held' === ( $e->details['status'] ?? null ) ? ' (held for review there)' : ( $e->created ? ' (created)' : ' (updated)' ) ) : '' ),
 					'message'   => (string) $e->message,
 				),
-				$log->recent( max( 1, (int) ( $assoc['limit'] ?? 20 ) ) )
+				$log->recent(
+					max( 1, (int) ( $assoc['limit'] ?? 20 ) ),
+					0,
+					LogFilter::fromInput(
+						array(
+							'direction' => $assoc['direction'] ?? null,
+							'sister'    => $assoc['sister'] ?? null,
+							'result'    => $assoc['result'] ?? null,
+							'search'    => $assoc['search'] ?? null,
+							'from'      => $assoc['from'] ?? null,
+							'to'        => $assoc['to'] ?? null,
+							'transfer'  => $assoc['batch'] ?? null,
+						),
+						wp_timezone()
+					)
+				)
 			),
 			array( 'id', 'when', 'direction', 'who', 'post', 'title', 'result', 'message' )
 		);
